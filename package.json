@@ -1,0 +1,32 @@
+{
+  "name": "imggenai",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "imggen": "dist/cli/index.js"
+  },
+  "exports": {
+    ".": "dist/core/index.js",
+    "./providers/*": "dist/providers/*.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check src/ package.json tsconfig.json",
+    "lint:fix": "biome check --fix src/ package.json tsconfig.json"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@biomejs/biome"]
+  }
+}
