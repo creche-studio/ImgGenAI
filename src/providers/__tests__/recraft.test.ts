@@ -1,0 +1,163 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  AuthError,
+  ProviderError,
+  RateLimitError,
+} from "../../errors/index.js";
+import type { GenerateRequest } from "../../types/index.js";
+import { RecraftProvider } from "../recraft.js";
+import recraftDef from "../recraft.js";
+
+// ---------------------------------------------------------------------------
+// Mock fetch
+// ---------------------------------------------------------------------------
+
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const REQUEST: GenerateRequest = {
+  prompt: "a dog",
+  count: 2,
+  size: { width: 1024, height: 1024 },
+};
+
+function okResponse(data: unknown) {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => data,
+  };
+}
+
+function errorResponse(status: number, body = "error") {
+  return {
+    ok: false,
+    status,
+    text: async () => body,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("RecraftProvider", () => {
+  let provider: RecraftProvider;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    provider = new RecraftProvider("recraft-key");
+  });
+
+  // --- metadata -----------------------------------------------------------
+
+  it("has correct metadata", () => {
+    expect(provider.name).toBe("recraft");
+    expect(provider.models).toEqual(["recraft-v4"]);
+    expect(provider.maxPromptLength).toBe(1000);
+  });
+
+  // --- ProviderDefinition default export -----------------------------------
+
+  it("default export has correct definition", () => {
+    expect(recraftDef.name).toBe("recraft");
+    expect(recraftDef.models).toEqual(["recraft-v4"]);
+    expect(recraftDef.envKey).toBe("RECRAFT_API_TOKEN");
+    expect(recraftDef.maxPromptLength).toBe(1000);
+    expect(typeof recraftDef.factory).toBe("function");
+  });
+
+  // --- success -------------------------------------------------------------
+
+  it("returns ImageData with base64 and mimeType on success", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse({
+        data: [{ b64_json: "aW1hZ2Ux" }, { b64_json: "aW1hZ2Uy" }],
+      }),
+    );
+
+    const result = await provider.generate(REQUEST);
+
+    expect(result.images).toHaveLength(2);
+    expect(result.images[0]).toEqual({
+      base64: "aW1hZ2Ux",
+      mimeType: "image/png",
+    });
+    expect(result.images[1]).toEqual({
+      base64: "aW1hZ2Uy",
+      mimeType: "image/png",
+    });
+  });
+
+  it("passes correct parameters to fetch", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse({ data: [{ b64_json: "aW1hZ2Ux" }] }),
+    );
+
+    await provider.generate(REQUEST);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://external.api.recraft.ai/v1/images/generations",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer recraft-key",
+        },
+        body: JSON.stringify({
+          model: "recraftv4",
+          prompt: "a dog",
+          n: 2,
+          width: 1024,
+          height: 1024,
+          response_format: "b64_json",
+        }),
+      },
+    );
+  });
+
+  // --- error: 0 images -----------------------------------------------------
+
+  it("throws ProviderError when API returns 0 images", async () => {
+    mockFetch.mockResolvedValue(okResponse({ data: [] }));
+
+    await expect(provider.generate(REQUEST)).rejects.toThrow(ProviderError);
+    await expect(provider.generate(REQUEST)).rejects.toThrow("0 images");
+  });
+
+  // --- error: 429 → RateLimitError -----------------------------------------
+
+  it("maps 429 to RateLimitError", async () => {
+    mockFetch.mockResolvedValue(errorResponse(429));
+
+    await expect(provider.generate(REQUEST)).rejects.toThrow(RateLimitError);
+  });
+
+  // --- error: 401 → AuthError ----------------------------------------------
+
+  it("maps 401 to AuthError", async () => {
+    mockFetch.mockResolvedValue(errorResponse(401));
+
+    await expect(provider.generate(REQUEST)).rejects.toThrow(AuthError);
+  });
+
+  // --- error: 403 → AuthError ----------------------------------------------
+
+  it("maps 403 to AuthError", async () => {
+    mockFetch.mockResolvedValue(errorResponse(403));
+
+    await expect(provider.generate(REQUEST)).rejects.toThrow(AuthError);
+  });
+
+  // --- error: 500 → ProviderError ------------------------------------------
+
+  it("maps 500 to ProviderError", async () => {
+    mockFetch.mockResolvedValue(errorResponse(500));
+
+    await expect(provider.generate(REQUEST)).rejects.toThrow(ProviderError);
+  });
+});

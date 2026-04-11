@@ -28,5 +28,9 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": ["@biomejs/biome"]
+  },
+  "dependencies": {
+    "@google/genai": "^1.48.0",
+    "openai": "^6.33.0"
   }
 }
