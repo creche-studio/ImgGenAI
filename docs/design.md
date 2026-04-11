@@ -290,16 +290,10 @@ params:
 ```bash
 imggen "blue mountain" -p openai --preset icon   # → 1024x1024
 imggen "blue mountain" -p openai --preset og-image # → 1200x630
+imggen "blue mountain" -p openai --size 512x512   # → 512x512 (直接指定)
 imggen "blue mountain" -p openai                   # → provider default size
+# --preset と --size は排他。両方指定するとエラー。
 ```
-
-### Preset Sources
-
-| 優先度 | 場所 | 用途 |
-|:--|:--|:--|
-| 高 | `.imggen/presets/` (プロジェクト) | プロジェクト固有のパラメータ |
-| 中 | `~/.config/imggen/presets/` (ユーザー) | 個人のよく使うパラメータ |
-| 低 | パッケージ内蔵 | `icon`, `og-image` 等の汎用プリセット |
 
 ### Prompt Length Validation
 
@@ -318,10 +312,8 @@ Preset とは独立に、Pipeline が Provider の `maxPromptLength` でバリ�
 
 ```mermaid
 graph TD
-    FLAGS["Flags<br/>(--provider, --output)"] -->|highest| RESOLVE["Resolved Config"]
+    FLAGS["Flags<br/>(--provider, --output, --size)"] -->|highest| RESOLVE["Resolved Config"]
     ENV["Environment Variables<br/>(OPENAI_API_KEY)"] --> RESOLVE
-    PROJECT_CONF[".imggen/config.yaml<br/>(project-level)"] --> RESOLVE
-    USER_CONF["~/.config/imggen/config.yaml<br/>(user-level)"] --> RESOLVE
     DEFAULTS["Built-in Defaults"] -->|lowest| RESOLVE
 
     style FLAGS fill:#4a9,color:#fff
@@ -407,16 +399,15 @@ imggen/
 │   │   └── index.ts           # Library public API
 │   │
 │   ├── providers/
-│   │   ├── base.ts            # Provider interface
+│   │   ├── index.ts            # Barrel + registerBuiltinProviders
 │   │   ├── registry.ts        # Provider registry
 │   │   ├── openai.ts
 │   │   ├── recraft.ts
 │   │   └── imagen.ts
 │   │
 │   ├── presets/
-│   │   ├── base.ts            # Preset interface
-│   │   ├── registry.ts        # Preset registry
-│   │   └── loader.ts          # YAML loader (params only)
+│   │   ├── index.ts            # Barrel export
+│   │   └── registry.ts        # Preset registry (YAML loader 内蔵)
 │   │
 │   ├── manifest/
 │   │   └── index.ts           # Manifest recorder
@@ -490,13 +481,13 @@ graph TD
 | §4 ヘルプ | 引数パーサライブラリで自動生成 + 例を先頭に |
 | §5 エラー設計 | 階層化エラー + 修正方法の提示 |
 | §6 フラグ設計 | 標準名使用、短縮形提供、順序非依存 |
-| §7 設定の階層 | flags > env > project config > user config > defaults |
+| §7 設定の階層 | flags > env > defaults |
 | §8 対話性 | `--dry-run` 提供。TTY/パイプで入力方法を自動切替 |
 | §9 速度 | API 呼び出し前にメッセージ、並列実行中はスピナー |
 | §10 サブコマンド | noun verb パターン、フラグ名統一 |
 | §11 堅牢性 | 入力検証（プロンプト長バリデーション含む）、API タイムアウト、部分失敗の許容 |
 | §13 環境変数 | SDK 標準名を使用、秘密はフラグ不可 |
-| §14 設定ファイル配置 | XDG 準拠 (`~/.config/imggen/`) |
+| §14 設定ファイル配置 | 現状不要。需要が見えた時点で XDG 準拠で追加 |
 | §15 将来への備え | Provider/Preset のレジストリパターン |
 
 ### Lessons Applied
