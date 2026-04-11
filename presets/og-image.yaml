@@ -1,0 +1,4 @@
+name: og-image
+description: "Open Graph image generation"
+params:
+  size: { width: 1200, height: 630 }

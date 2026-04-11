@@ -1,0 +1,4 @@
+name: icon
+description: "Square icon generation"
+params:
+  size: { width: 1024, height: 1024 }
