@@ -51,6 +51,7 @@ const generateCmd = new Command("generate")
   .option("-p, --provider <name...>", "Provider (repeatable)", [])
   .option("-c, --count <n>", "Images per provider", "1")
   .option("--preset <name>", "Preset name")
+  .option("-s, --size <WxH>", "Image size (e.g. 1024x1024)")
   .option("-o, --output <dir>", "Output directory")
   .option("--json", "JSON output")
   .option("-q, --quiet", "Suppress non-essential output")
@@ -66,10 +67,21 @@ const generateCmd = new Command("generate")
         process.env.NO_COLOR = "1";
       }
 
+      const presetVal = cmdOpts.preset as string | undefined;
+      const sizeVal = cmdOpts.size as string | undefined;
+
+      if (presetVal && sizeVal) {
+        process.stderr.write(
+          "✗ --preset and --size cannot be used together.\n",
+        );
+        process.exit(3);
+      }
+
       const flags: GenerateFlags = {
         provider: normalizeProvider(cmdOpts.provider as string[] | string),
         count: Number(cmdOpts.count) || 1,
-        preset: cmdOpts.preset as string | undefined,
+        preset: presetVal,
+        size: sizeVal,
         output: cmdOpts.output as string | undefined,
         json: (cmdOpts.json as boolean) ?? false,
         quiet: (cmdOpts.quiet as boolean) ?? false,

@@ -191,7 +191,8 @@ Total: 5 images, 3.4s
 |:--|:--|:--|:--|
 | `--provider <name>` | `-p` | Provider (repeatable) | §6 Flags over args |
 | `--count <n>` | `-c` | Images per provider (default: 1) | §6 Standard names |
-| `--preset <name>` | — | Preset name | §6 |
+| `--preset <name>` | — | Preset name (exclusive with --size) | §6 |
+| `--size <WxH>` | `-s` | Image size e.g. 1024x1024 (exclusive with --preset) | §6 |
 | `--output <dir>` | `-o` | Output directory | §6 Standard names |
 | `--json` | — | JSON output | §3 Duality |
 | `--quiet` | `-q` | Suppress non-essential output | §3 Duality |

@@ -19,6 +19,7 @@ export interface GenerateFlags {
   provider: string[];
   count: number;
   preset?: string;
+  size?: string;
   output?: string;
   json?: boolean;
   quiet?: boolean;
@@ -46,6 +47,19 @@ async function executeForPrompt(
   const config = resolveConfig(buildFlagValues(flags));
   const pipeline = createPipeline();
 
+  // Parse --size WxH into { width, height }
+  let sizeOption: { width: number; height: number } | undefined;
+  if (flags.size) {
+    const match = flags.size.match(/^(\d+)x(\d+)$/);
+    if (!match) {
+      throw new ValidationError(
+        `Invalid size format: "${flags.size}"`,
+        "Use WxH format, e.g. --size 1024x1024",
+      );
+    }
+    sizeOption = { width: Number(match[1]), height: Number(match[2]) };
+  }
+
   const input: PipelineInput = {
     prompt,
     providers: config.providers.map((name) => ({ name })),
@@ -53,6 +67,7 @@ async function executeForPrompt(
     outputDir: config.outputDir !== "./output" ? config.outputDir : undefined,
     options: {
       count: config.count,
+      size: sizeOption,
     },
   };
 
