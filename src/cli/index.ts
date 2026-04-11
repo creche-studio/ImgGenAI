@@ -7,7 +7,6 @@ import { createRequire } from "node:module";
 import { Command } from "commander";
 import { runGenerate } from "./commands/generate.js";
 import type { GenerateFlags } from "./commands/generate.js";
-import { runHistory } from "./commands/history.js";
 import { runProviders } from "./commands/providers.js";
 
 // ---------------------------------------------------------------------------
@@ -101,28 +100,6 @@ program
       process.env.NO_COLOR = "1";
     }
     runProviders({ json: (cmdOpts.json as boolean) ?? false });
-  });
-
-// ---------------------------------------------------------------------------
-// history
-// ---------------------------------------------------------------------------
-
-program
-  .command("history")
-  .description("Show generation history")
-  .option("--json", "JSON output")
-  .option("-o, --output <dir>", "Output directory to search")
-  .action((cmdOpts: Record<string, unknown>) => {
-    const parentOpts = program.opts();
-    if (
-      shouldDisableColor({ color: parentOpts.color as boolean | undefined })
-    ) {
-      process.env.NO_COLOR = "1";
-    }
-    runHistory({
-      json: (cmdOpts.json as boolean) ?? false,
-      output: cmdOpts.output as string | undefined,
-    });
   });
 
 // ---------------------------------------------------------------------------

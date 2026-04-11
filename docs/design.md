@@ -106,11 +106,9 @@ graph TD
 
     ROOT --> GENERATE["generate (default)"]
     ROOT --> PROVIDERS["providers"]
-    ROOT --> HISTORY["history"]
 
     GENERATE --> G1["imggen generate 'prompt'<br/>--provider, --count, --preset,<br/>--output, --json, --quiet"]
     PROVIDERS --> P1["imggen providers"]
-    HISTORY --> H1["imggen history<br/>--last, --provider, --json"]
 ```
 
 ### Usage Examples
@@ -397,8 +395,7 @@ imggen/
 │   │   ├── index.ts          # Entry point (bin)
 │   │   ├── commands/
 │   │   │   ├── generate.ts    # Default command
-│   │   │   ├── providers.ts   # providers list
-│   │   │   └── history.ts     # generation history
+│   │   │   └── providers.ts   # providers list
 │   │   └── output/
 │   │       ├── human.ts       # TTY formatter
 │   │       └── json.ts        # JSON formatter
