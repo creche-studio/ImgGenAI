@@ -14,7 +14,7 @@ import {
   printGeneratingHeader,
   printResult,
 } from "../output/human.js";
-import { printJsonResult } from "../output/json.js";
+import { printJsonError, printJsonResult } from "../output/json.js";
 
 export interface GenerateFlags {
   provider: string[];
@@ -183,42 +183,60 @@ export async function runGenerate(
     const result = await executeForPrompt(promptArg, flags);
     return computeExitCode([result]);
   } catch (error) {
+    const isJson = flags.json || !process.stdout.isTTY;
+
     if (error instanceof ValidationError) {
-      process.stderr.write(`\u2717 ${error.message}\n`);
-      if (error.hint) {
-        process.stderr.write(`  ${error.hint}\n`);
-      }
-      if (flags.debug && error.stack) {
-        process.stderr.write(`\n${error.stack}\n`);
+      if (isJson) {
+        printJsonError(error);
+      } else {
+        process.stderr.write(`\u2717 ${error.message}\n`);
+        if (error.hint) {
+          process.stderr.write(`  ${error.hint}\n`);
+        }
+        if (flags.debug && error.stack) {
+          process.stderr.write(`\n${error.stack}\n`);
+        }
       }
       return 3;
     }
     if (error instanceof ConfigError) {
-      process.stderr.write(`\u2717 ${error.name}: ${error.message}\n`);
-      if (error.hint) {
-        process.stderr.write(`\n  ${error.hint}\n`);
-      }
-      if (flags.debug && error.stack) {
-        process.stderr.write(`\n${error.stack}\n`);
+      if (isJson) {
+        printJsonError(error);
+      } else {
+        process.stderr.write(`\u2717 ${error.name}: ${error.message}\n`);
+        if (error.hint) {
+          process.stderr.write(`\n  ${error.hint}\n`);
+        }
+        if (flags.debug && error.stack) {
+          process.stderr.write(`\n${error.stack}\n`);
+        }
       }
       return 4;
     }
     if (error instanceof AppError) {
-      process.stderr.write(`\u2717 ${error.name}: ${error.message}\n`);
-      if (error.hint) {
-        process.stderr.write(`  ${error.hint}\n`);
-      }
-      if (flags.debug && error.stack) {
-        process.stderr.write(`\n${error.stack}\n`);
+      if (isJson) {
+        printJsonError(error);
+      } else {
+        process.stderr.write(`\u2717 ${error.name}: ${error.message}\n`);
+        if (error.hint) {
+          process.stderr.write(`  ${error.hint}\n`);
+        }
+        if (flags.debug && error.stack) {
+          process.stderr.write(`\n${error.stack}\n`);
+        }
       }
       return 2;
     }
 
     // Unexpected error
     const msg = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`\u2717 Unexpected error: ${msg}\n`);
-    if (flags.debug && error instanceof Error && error.stack) {
-      process.stderr.write(`\n${error.stack}\n`);
+    if (isJson) {
+      printJsonError(new AppError(msg));
+    } else {
+      process.stderr.write(`\u2717 Unexpected error: ${msg}\n`);
+      if (flags.debug && error instanceof Error && error.stack) {
+        process.stderr.write(`\n${error.stack}\n`);
+      }
     }
     return 2;
   }
