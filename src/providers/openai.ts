@@ -10,6 +10,7 @@ import type {
   ImageData,
   Provider,
   ProviderDefinition,
+  UsageMetadata,
 } from "../types/index.js";
 
 export class OpenAIProvider implements Provider {
@@ -44,7 +45,15 @@ export class OpenAIProvider implements Provider {
         throw new ProviderError(`${this.name}: API returned 0 images`);
       }
 
-      return { images };
+      const usage: UsageMetadata | undefined =
+        response.usage
+          ? {
+              inputTokens: response.usage.input_tokens,
+              outputTokens: response.usage.output_tokens,
+            }
+          : undefined;
+
+      return { images, ...(usage ? { usage } : {}) };
     } catch (error) {
       if (error instanceof ProviderError) throw error;
 

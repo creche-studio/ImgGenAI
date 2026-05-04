@@ -15,9 +15,19 @@ export interface GenerateRequest {
   readonly size: { readonly width: number; readonly height: number };
 }
 
+/** Usage metadata returned by providers that expose token-level billing. */
+export interface UsageMetadata {
+  readonly inputTokens?: number;
+  readonly outputTokens?: number;
+}
+
 /** Result returned from a single Provider#generate call. */
 export interface GenerateResult {
   readonly images: ImageData[];
+  /** Token/credit usage breakdown (when available from the API response). */
+  readonly usage?: UsageMetadata;
+  /** Non-fatal warnings from the provider (e.g. content filtered). */
+  readonly warnings?: readonly string[];
 }
 
 // ---------------------------------------------------------------------------

@@ -78,6 +78,30 @@ describe("OpenAIProvider", () => {
     });
   });
 
+  it("returns usage metadata when API response includes usage", async () => {
+    mockGenerate.mockResolvedValue({
+      data: [{ b64_json: "aGVsbG8=" }],
+      usage: { input_tokens: 100, output_tokens: 4096 },
+    });
+
+    const result = await provider.generate(REQUEST);
+
+    expect(result.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 4096,
+    });
+  });
+
+  it("omits usage when API response has no usage field", async () => {
+    mockGenerate.mockResolvedValue({
+      data: [{ b64_json: "aGVsbG8=" }],
+    });
+
+    const result = await provider.generate(REQUEST);
+
+    expect(result.usage).toBeUndefined();
+  });
+
   it("passes correct parameters to the SDK", async () => {
     mockGenerate.mockResolvedValue({
       data: [{ b64_json: "aGVsbG8=" }],
