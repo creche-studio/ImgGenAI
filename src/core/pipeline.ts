@@ -2,8 +2,6 @@
 // Pipeline – ImgGenAI
 // ---------------------------------------------------------------------------
 
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import { ValidationError } from "../errors/index.js";
 import type { record as RecordFn } from "../manifest/index.js";
 import type { PresetRegistry } from "../presets/registry.js";
@@ -14,6 +12,7 @@ import type {
   PipelineResult,
   ProviderResult,
 } from "../types/index.js";
+import type { OutputWriter } from "./output-writer.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,6 +47,7 @@ export class Pipeline {
     private readonly providerRegistry: ProviderRegistry,
     private readonly presetRegistry: PresetRegistry,
     private readonly manifestRecorder: typeof RecordFn,
+    private readonly outputWriter: OutputWriter,
   ) {}
 
   async execute(
@@ -122,14 +122,17 @@ export class Pipeline {
 
         // Save images
         const outputs: string[] = [];
-        await fs.mkdir(outputDir, { recursive: true });
+        await this.outputWriter.ensureDir(outputDir);
 
         for (let i = 0; i < result.images.length; i++) {
           const img = result.images[i];
           const ext = img.mimeType.split("/")[1] ?? "png";
           const filename = `${entry.name}_${i}.${ext}`;
-          const filePath = path.join(outputDir, filename);
-          await fs.writeFile(filePath, Buffer.from(img.base64, "base64"));
+          const filePath = await this.outputWriter.write(
+            outputDir,
+            filename,
+            Buffer.from(img.base64, "base64"),
+          );
           outputs.push(filePath);
         }
 

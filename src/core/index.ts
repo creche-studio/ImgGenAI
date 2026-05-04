@@ -10,6 +10,7 @@ import {
   ProviderRegistry,
   registerBuiltinProviders,
 } from "../providers/index.js";
+import { FsOutputWriter } from "./output-writer.js";
 import { Pipeline } from "./pipeline.js";
 
 // ---------------------------------------------------------------------------
@@ -32,7 +33,7 @@ export function createPipeline(): Pipeline {
   presetRegistry.loadFromDirectories([builtinPresetsDir]);
 
   // 3. Pipeline
-  return new Pipeline(providerRegistry, presetRegistry, record);
+  return new Pipeline(providerRegistry, presetRegistry, record, new FsOutputWriter());
 }
 
 // ---------------------------------------------------------------------------
@@ -40,6 +41,8 @@ export function createPipeline(): Pipeline {
 // ---------------------------------------------------------------------------
 
 export { Pipeline, slugify, formatTimestamp } from "./pipeline.js";
+export { FsOutputWriter } from "./output-writer.js";
+export type { OutputWriter } from "./output-writer.js";
 export { resolveConfig } from "./config.js";
 export {
   ProviderRegistry,

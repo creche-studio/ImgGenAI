@@ -1,6 +1,3 @@
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ValidationError } from "../../errors/index.js";
 import { PresetRegistry } from "../../presets/registry.js";
@@ -10,6 +7,7 @@ import type {
   Provider,
   ProviderDefinition,
 } from "../../types/index.js";
+import type { OutputWriter } from "../output-writer.js";
 import { Pipeline, formatTimestamp, slugify } from "../pipeline.js";
 
 // ---------------------------------------------------------------------------
@@ -54,10 +52,24 @@ function makeProviderRegistry(...defs: ProviderDefinition[]): ProviderRegistry {
   return registry;
 }
 
-let tmpDirPath: string;
+/** In-memory OutputWriter for testing – no filesystem access. */
+class InMemoryOutputWriter implements OutputWriter {
+  readonly written = new Map<string, Buffer>();
+
+  async ensureDir(_dir: string): Promise<void> {
+    // no-op
+  }
+
+  async write(dir: string, filename: string, data: Buffer): Promise<string> {
+    const filePath = `${dir}/${filename}`;
+    this.written.set(filePath, data);
+    return filePath;
+  }
+}
+
+const TEST_OUTPUT_DIR = "/tmp/pipeline-test-output";
 
 beforeEach(() => {
-  tmpDirPath = fs.mkdtempSync(path.join(os.tmpdir(), "pipeline-test-"));
   // Set mock API keys so ProviderRegistry.resolve() works
   process.env.MOCK_API_KEY = "sk-test";
   process.env.ALPHA_KEY = "sk-test";
@@ -67,7 +79,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  fs.rmSync(tmpDirPath, { recursive: true, force: true });
   process.env.MOCK_API_KEY = undefined;
   process.env.ALPHA_KEY = undefined;
   process.env.BETA_KEY = undefined;
@@ -114,13 +125,14 @@ describe("Pipeline", () => {
       recorded.push(entry);
       return "manifest.json";
     };
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
     const result = await pipeline.execute(
       {
         prompt: "a cute cat",
         providers: [{ name: "mock" }],
-        outputDir: tmpDirPath,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -131,9 +143,9 @@ describe("Pipeline", () => {
     expect(result.results[0].outputs).toHaveLength(1);
     expect(result.results[0].model).toBe("mock-v1");
 
-    // Image file was written
+    // Image data was written via OutputWriter
     const imgPath = result.results[0].outputs[0];
-    expect(fs.existsSync(imgPath)).toBe(true);
+    expect(writer.written.has(imgPath)).toBe(true);
 
     // Manifest was recorded
     expect(recorded).toHaveLength(1);
@@ -146,13 +158,14 @@ describe("Pipeline", () => {
     const providerRegistry = makeProviderRegistry(defA, defB);
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
     const result = await pipeline.execute(
       {
         prompt: "a dog",
         providers: [{ name: "alpha" }, { name: "beta" }],
-        outputDir: tmpDirPath,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -183,13 +196,14 @@ describe("Pipeline", () => {
     const providerRegistry = makeProviderRegistry(goodDef, badDef);
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
     const result = await pipeline.execute(
       {
         prompt: "test",
         providers: [{ name: "good" }, { name: "bad" }],
-        outputDir: tmpDirPath,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -210,14 +224,15 @@ describe("Pipeline", () => {
     const providerRegistry = makeProviderRegistry(shortDef);
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     await expect(
       pipeline.execute({
         prompt: "this is way too long",
         providers: [{ name: "mock" }],
-        outputDir: tmpDirPath,
+        outputDir: TEST_OUTPUT_DIR,
       }),
     ).rejects.toThrow(ValidationError);
   });
@@ -251,14 +266,15 @@ describe("Pipeline", () => {
     });
     const reg2 = makeProviderRegistry(customDef);
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(reg2, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(reg2, presetRegistry, mockRecord, writer);
     await pipeline.execute(
       {
         prompt: "icon test",
         providers: [{ name: "mock" }],
         preset: "icon",
-        outputDir: tmpDirPath,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -279,13 +295,14 @@ describe("Pipeline", () => {
     const providerRegistry = makeProviderRegistry(dryDef);
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
     const result = await pipeline.execute(
       {
         prompt: "dry test",
         providers: [{ name: "mock" }],
-        outputDir: tmpDirPath,
+        outputDir: TEST_OUTPUT_DIR,
       },
       { dryRun: true },
     );
@@ -300,13 +317,14 @@ describe("Pipeline", () => {
     );
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
     const result = await pipeline.execute(
       {
         prompt: "model test",
         providers: [{ name: "mock" }],
-        outputDir: tmpDirPath,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -318,8 +336,9 @@ describe("Pipeline", () => {
     const providerRegistry = makeProviderRegistry(makeDef());
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     await expect(
       pipeline.execute({
@@ -333,8 +352,9 @@ describe("Pipeline", () => {
     const providerRegistry = makeProviderRegistry(makeDef());
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     await expect(
       pipeline.execute({

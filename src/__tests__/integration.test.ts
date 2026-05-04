@@ -2,10 +2,8 @@
 // Integration Tests – ImgGenAI (Phase 7)
 // ---------------------------------------------------------------------------
 
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { OutputWriter } from "../core/output-writer.js";
 import { Pipeline } from "../core/pipeline.js";
 import { PresetRegistry } from "../presets/registry.js";
 import { ProviderRegistry } from "../providers/registry.js";
@@ -56,21 +54,37 @@ function makeMockDef(
 }
 
 // ---------------------------------------------------------------------------
+// In-memory OutputWriter for testing
+// ---------------------------------------------------------------------------
+
+class InMemoryOutputWriter implements OutputWriter {
+  readonly written = new Map<string, Buffer>();
+
+  async ensureDir(_dir: string): Promise<void> {
+    // no-op
+  }
+
+  async write(dir: string, filename: string, data: Buffer): Promise<string> {
+    const filePath = `${dir}/${filename}`;
+    this.written.set(filePath, data);
+    return filePath;
+  }
+}
+
+const TEST_OUTPUT_DIR = "/tmp/integration-test-output";
+
+// ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
 
 describe("Integration: full pipeline", () => {
-  let tmpDir: string;
-
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "integration-test-"));
     process.env.MOCK_API_KEY = "sk-test";
     process.env.ALPHA_KEY = "sk-alpha";
     process.env.BETA_KEY = "sk-beta";
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
     for (const key of ["MOCK_API_KEY", "ALPHA_KEY", "BETA_KEY"]) {
       delete process.env[key];
     }
@@ -91,21 +105,22 @@ describe("Integration: full pipeline", () => {
       recorded.push(entry);
       return "manifest.json";
     };
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     const result = await pipeline.execute(
       {
         prompt: "a cute cat",
         providers: [{ name: "mock" }],
-        outputDir: tmpDir,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
 
     // PipelineResult shape
     expect(result.success).toBe(true);
-    expect(result.outputDir).toBe(tmpDir);
+    expect(result.outputDir).toBe(TEST_OUTPUT_DIR);
     expect(result.results).toHaveLength(1);
 
     const pr = result.results[0];
@@ -114,8 +129,8 @@ describe("Integration: full pipeline", () => {
     expect(pr.outputs).toHaveLength(1);
     expect(pr.duration).toBeGreaterThanOrEqual(0);
 
-    // File was actually written
-    expect(fs.existsSync(pr.outputs[0])).toBe(true);
+    // Image data was written via OutputWriter
+    expect(writer.written.has(pr.outputs[0])).toBe(true);
 
     // Manifest was recorded
     expect(recorded).toHaveLength(1);
@@ -148,14 +163,15 @@ describe("Integration: full pipeline", () => {
 
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     const result = await pipeline.execute(
       {
         prompt: "partial test",
         providers: [{ name: "alpha" }, { name: "beta" }],
-        outputDir: tmpDir,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -194,14 +210,15 @@ describe("Integration: full pipeline", () => {
 
     const presetRegistry = new PresetRegistry();
     const mockRecord = vi.fn(async () => "manifest.json");
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     const result = await pipeline.execute(
       {
         prompt: "dry test",
         providers: [{ name: "mock" }],
-        outputDir: tmpDir,
+        outputDir: TEST_OUTPUT_DIR,
       },
       { dryRun: true },
     );
@@ -238,14 +255,15 @@ describe("Integration: full pipeline", () => {
     });
 
     const mockRecord = async () => "manifest.json";
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const writer = new InMemoryOutputWriter();
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     await pipeline.execute(
       {
         prompt: "icon test",
         providers: [{ name: "mock" }],
         preset: "icon",
-        outputDir: tmpDir,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -265,14 +283,15 @@ describe("Integration: full pipeline", () => {
 
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     const result = await pipeline.execute(
       {
         prompt: "model field test",
         providers: [{ name: "mock" }],
-        outputDir: tmpDir,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -289,14 +308,15 @@ describe("Integration: full pipeline", () => {
 
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     const result = await pipeline.execute(
       {
         prompt: "model override test",
         providers: [{ name: "mock", model: "custom-model" }],
-        outputDir: tmpDir,
+        outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
@@ -312,14 +332,15 @@ describe("Integration: full pipeline", () => {
 
     const presetRegistry = new PresetRegistry();
     const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord);
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
 
     const result = await pipeline.execute(
       {
         prompt: "dry model test",
         providers: [{ name: "mock", model: "specified-model" }],
-        outputDir: tmpDir,
+        outputDir: TEST_OUTPUT_DIR,
       },
       { dryRun: true },
     );
