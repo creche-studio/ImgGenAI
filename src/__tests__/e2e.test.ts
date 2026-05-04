@@ -118,10 +118,11 @@ describe("E2E: CLI", () => {
     expect(r.stdout).toContain("Usage:");
   });
 
-  // 7. provider not specified → exit 3
-  it('"test" without -p → exit 3 (validation error)', async () => {
+  // 7. provider not specified → defaults to openai via env fallback → exit 4 (no API key)
+  it('"test" without -p → defaults to openai, exit 4 (missing API key)', async () => {
     const r = await run(["test"]);
-    expect(r.code).toBe(3);
+    expect(r.code).toBe(4);
+    expect(r.stderr).toContain("API key not set");
   });
 
   // 8. unknown provider → exit 3

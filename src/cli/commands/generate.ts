@@ -18,7 +18,7 @@ import { printJsonResult } from "../output/json.js";
 
 export interface GenerateFlags {
   provider: string[];
-  count: number;
+  count?: number;
   preset?: string;
   size?: string;
   output?: string;
@@ -28,7 +28,8 @@ export interface GenerateFlags {
   dryRun?: boolean;
 }
 
-function parseCount(raw: number): number {
+function parseCount(raw: number | undefined): number | undefined {
+  if (raw === undefined) return undefined;
   if (!Number.isInteger(raw) || raw < 1 || raw > 10) {
     throw new ValidationError(
       `Invalid --count: "${raw}"`,
@@ -51,7 +52,7 @@ function validateProviderName(name: string): ProviderName {
 function buildFlagValues(flags: GenerateFlags): FlagValues {
   return {
     provider: flags.provider,
-    count: flags.count,
+    ...(flags.count !== undefined ? { count: flags.count } : {}),
     preset: flags.preset,
     outputDir: flags.output,
     json: flags.json,
@@ -65,6 +66,9 @@ async function executeForPrompt(
   prompt: string,
   flags: GenerateFlags,
 ): Promise<PipelineResult> {
+  // Validate --count flag early (CLI layer), before resolveConfig
+  parseCount(flags.count);
+
   const config = resolveConfig(buildFlagValues(flags));
   const pipeline = createPipeline();
 
@@ -88,9 +92,6 @@ async function executeForPrompt(
     }
     sizeOption = { width, height };
   }
-
-  // Validate count early (CLI layer)
-  parseCount(config.count);
 
   // Validate provider names early (CLI layer)
   const providers = config.providers.map((name) => ({

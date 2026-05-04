@@ -49,7 +49,7 @@ const generateCmd = new Command("generate")
   .description("Generate images from a prompt (default command)")
   .argument("[prompt]", "Image generation prompt")
   .option("-p, --provider <name...>", "Provider (repeatable)", [])
-  .option("-c, --count <n>", "Images per provider", "1")
+  .option("-c, --count <n>", "Images per provider")
   .option("--preset <name>", "Preset name")
   .option("-s, --size <WxH>", "Image size (e.g. 1024x1024)")
   .option("-o, --output <dir>", "Output directory")
@@ -77,9 +77,11 @@ const generateCmd = new Command("generate")
         process.exit(3);
       }
 
+      const rawCount = cmdOpts.count as string | undefined;
+
       const flags: GenerateFlags = {
         provider: normalizeProvider(cmdOpts.provider as string[] | string),
-        count: Number(cmdOpts.count),
+        count: rawCount !== undefined ? Number(rawCount) : undefined,
         preset: presetVal,
         size: sizeVal,
         output: cmdOpts.output as string | undefined,
