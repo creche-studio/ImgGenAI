@@ -50,12 +50,16 @@ export class OpenAIProvider implements Provider {
 
       const apiError = error as { status?: number; message?: string };
       if (apiError.status === 429) {
-        throw new RateLimitError(`${this.name}: rate limited`);
+        throw new RateLimitError(
+          `${this.name}: rate limited`,
+          "Wait a moment and retry, or check your usage limits at platform.openai.com",
+        );
       }
       if (apiError.status === 401 || apiError.status === 403) {
         throw new AuthError(
           `${this.name}: authentication failed`,
           apiError.status,
+          "Verify OPENAI_API_KEY is valid: export OPENAI_API_KEY=sk-...",
         );
       }
       throw new ProviderError(

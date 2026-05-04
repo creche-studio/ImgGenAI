@@ -62,10 +62,17 @@ export class ImagenProvider implements Provider {
 
       const err = error as { status?: number; message?: string };
       if (err.status === 429) {
-        throw new RateLimitError(`${this.name}: rate limited`);
+        throw new RateLimitError(
+          `${this.name}: rate limited`,
+          "Wait a moment and retry, or check your Gemini API quota",
+        );
       }
       if (err.status === 401 || err.status === 403) {
-        throw new AuthError(`${this.name}: authentication failed`, err.status);
+        throw new AuthError(
+          `${this.name}: authentication failed`,
+          err.status,
+          "Verify GEMINI_API_KEY is valid: export GEMINI_API_KEY=...",
+        );
       }
       throw new ProviderError(
         `${this.name}: ${err.message ?? "Unknown error"}`,

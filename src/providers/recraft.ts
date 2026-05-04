@@ -53,12 +53,16 @@ export class RecraftProvider implements Provider {
 
       if (!response.ok) {
         if (response.status === 429) {
-          throw new RateLimitError(`${this.name}: rate limited`);
+          throw new RateLimitError(
+            `${this.name}: rate limited`,
+            "Wait a moment and retry, or check your credit balance",
+          );
         }
         if (response.status === 401 || response.status === 403) {
           throw new AuthError(
             `${this.name}: authentication failed`,
             response.status,
+            "Verify RECRAFT_API_TOKEN is valid: export RECRAFT_API_TOKEN=...",
           );
         }
         const errorText = await response.text().catch(() => "Unknown error");
