@@ -6,6 +6,7 @@ import type {
   ManifestEntry,
   Provider,
   ProviderDefinition,
+  ProviderName,
 } from "../../types/index.js";
 import type { OutputWriter } from "../output-writer.js";
 import { Pipeline, formatTimestamp, slugify } from "../pipeline.js";
@@ -66,6 +67,9 @@ class InMemoryOutputWriter implements OutputWriter {
     return filePath;
   }
 }
+
+/** Cast a test provider name to ProviderName for type compatibility. */
+const pn = (name: string) => name as ProviderName;
 
 const TEST_OUTPUT_DIR = "/tmp/pipeline-test-output";
 
@@ -131,7 +135,7 @@ describe("Pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "a cute cat",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
@@ -164,7 +168,7 @@ describe("Pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "a dog",
-        providers: [{ name: "alpha" }, { name: "beta" }],
+        providers: [{ name: pn("alpha") }, { name: pn("beta") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
@@ -202,7 +206,7 @@ describe("Pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "test",
-        providers: [{ name: "good" }, { name: "bad" }],
+        providers: [{ name: pn("good") }, { name: pn("bad") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
@@ -231,7 +235,7 @@ describe("Pipeline", () => {
     await expect(
       pipeline.execute({
         prompt: "this is way too long",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         outputDir: TEST_OUTPUT_DIR,
       }),
     ).rejects.toThrow(ValidationError);
@@ -272,7 +276,7 @@ describe("Pipeline", () => {
     await pipeline.execute(
       {
         prompt: "icon test",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         preset: "icon",
         outputDir: TEST_OUTPUT_DIR,
       },
@@ -301,7 +305,7 @@ describe("Pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "dry test",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       { dryRun: true },
@@ -323,7 +327,7 @@ describe("Pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "model test",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
@@ -343,7 +347,7 @@ describe("Pipeline", () => {
     await expect(
       pipeline.execute({
         prompt: "",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
       }),
     ).rejects.toThrow(ValidationError);
   });

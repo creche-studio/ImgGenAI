@@ -34,6 +34,16 @@ export interface GenerateResult {
 // Provider
 // ---------------------------------------------------------------------------
 
+/**
+ * Known provider identifiers. Literal union for type-safe provider selection.
+ */
+export type ProviderName = "openai" | "recraft" | "imagen";
+
+/** Type guard for ProviderName. */
+export function isProviderName(value: string): value is ProviderName {
+  return value === "openai" || value === "recraft" || value === "imagen";
+}
+
 export interface Provider {
   readonly name: string;
   readonly models: string[];
@@ -54,7 +64,7 @@ export interface ProviderDefinition {
 // ---------------------------------------------------------------------------
 
 export interface ProviderEntry {
-  readonly name: string;
+  readonly name: ProviderName;
   readonly model?: string;
 }
 

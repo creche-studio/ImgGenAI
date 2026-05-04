@@ -79,7 +79,7 @@ const generateCmd = new Command("generate")
 
       const flags: GenerateFlags = {
         provider: normalizeProvider(cmdOpts.provider as string[] | string),
-        count: Number(cmdOpts.count) || 1,
+        count: Number(cmdOpts.count),
         preset: presetVal,
         size: sizeVal,
         output: cmdOpts.output as string | undefined,

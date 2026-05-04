@@ -7,7 +7,8 @@ import { resolveConfig } from "../../core/config.js";
 import type { FlagValues } from "../../core/config.js";
 import { createPipeline } from "../../core/index.js";
 import { AppError, ConfigError, ValidationError } from "../../errors/index.js";
-import type { PipelineInput, PipelineResult } from "../../types/index.js";
+import type { PipelineInput, PipelineResult, ProviderName } from "../../types/index.js";
+import { isProviderName } from "../../types/index.js";
 import {
   printDryRun,
   printGeneratingHeader,
@@ -25,6 +26,26 @@ export interface GenerateFlags {
   quiet?: boolean;
   debug?: boolean;
   dryRun?: boolean;
+}
+
+function parseCount(raw: number): number {
+  if (!Number.isInteger(raw) || raw < 1 || raw > 10) {
+    throw new ValidationError(
+      `Invalid --count: "${raw}"`,
+      "Must be an integer between 1 and 10",
+    );
+  }
+  return raw;
+}
+
+function validateProviderName(name: string): ProviderName {
+  if (!isProviderName(name)) {
+    throw new ValidationError(
+      `Unknown provider: "${name}"`,
+      "Allowed providers: openai, recraft, imagen",
+    );
+  }
+  return name;
 }
 
 function buildFlagValues(flags: GenerateFlags): FlagValues {
@@ -68,9 +89,17 @@ async function executeForPrompt(
     sizeOption = { width, height };
   }
 
+  // Validate count early (CLI layer)
+  parseCount(config.count);
+
+  // Validate provider names early (CLI layer)
+  const providers = config.providers.map((name) => ({
+    name: validateProviderName(name),
+  }));
+
   const input: PipelineInput = {
     prompt,
-    providers: config.providers.map((name) => ({ name })),
+    providers,
     preset: config.preset,
     outputDir: config.outputDir !== "./output" ? config.outputDir : undefined,
     options: {

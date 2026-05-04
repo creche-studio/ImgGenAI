@@ -12,6 +12,7 @@ import type {
   ManifestEntry,
   Provider,
   ProviderDefinition,
+  ProviderName,
 } from "../types/index.js";
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,9 @@ class InMemoryOutputWriter implements OutputWriter {
   }
 }
 
+/** Cast a test provider name to ProviderName for type compatibility. */
+const pn = (name: string) => name as ProviderName;
+
 const TEST_OUTPUT_DIR = "/tmp/integration-test-output";
 
 // ---------------------------------------------------------------------------
@@ -112,7 +116,7 @@ describe("Integration: full pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "a cute cat",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
@@ -170,7 +174,7 @@ describe("Integration: full pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "partial test",
-        providers: [{ name: "alpha" }, { name: "beta" }],
+        providers: [{ name: pn("alpha") }, { name: pn("beta") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
@@ -217,7 +221,7 @@ describe("Integration: full pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "dry test",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       { dryRun: true },
@@ -261,7 +265,7 @@ describe("Integration: full pipeline", () => {
     await pipeline.execute(
       {
         prompt: "icon test",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         preset: "icon",
         outputDir: TEST_OUTPUT_DIR,
       },
@@ -290,7 +294,7 @@ describe("Integration: full pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "model field test",
-        providers: [{ name: "mock" }],
+        providers: [{ name: pn("mock") }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
@@ -315,7 +319,7 @@ describe("Integration: full pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "model override test",
-        providers: [{ name: "mock", model: "custom-model" }],
+        providers: [{ name: pn("mock"), model: "custom-model" }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
@@ -339,7 +343,7 @@ describe("Integration: full pipeline", () => {
     const result = await pipeline.execute(
       {
         prompt: "dry model test",
-        providers: [{ name: "mock", model: "specified-model" }],
+        providers: [{ name: pn("mock"), model: "specified-model" }],
         outputDir: TEST_OUTPUT_DIR,
       },
       { dryRun: true },

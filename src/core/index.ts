@@ -63,6 +63,7 @@ export type {
   Provider,
   ProviderDefinition,
   ProviderEntry,
+  ProviderName,
   PresetParams,
   PipelineOptions,
   GenerateRequest,
@@ -70,6 +71,7 @@ export type {
   ImageData,
   ManifestEntry,
 } from "../types/index.js";
+export { isProviderName } from "../types/index.js";
 export type { ProviderInfo } from "../providers/index.js";
 export {
   AppError,
