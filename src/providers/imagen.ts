@@ -3,7 +3,12 @@
 // ---------------------------------------------------------------------------
 
 import { GoogleGenAI } from "@google/genai";
-import { AuthError, ProviderError, RateLimitError } from "../errors/index.js";
+import {
+  AuthError,
+  ProviderError,
+  RateLimitError,
+  ValidationError,
+} from "../errors/index.js";
 import type {
   GenerateRequest,
   GenerateResult,
@@ -23,6 +28,28 @@ function toAspectRatio(width: number, height: number): string {
   return `${width / d}:${height / d}`;
 }
 
+const IMAGEN_SUPPORTED_RATIOS = [
+  "1:1",
+  "3:4",
+  "4:3",
+  "9:16",
+  "16:9",
+] as const;
+
+function validateSize(size: { width: number; height: number }): void {
+  const ratio = toAspectRatio(size.width, size.height);
+  if (
+    !IMAGEN_SUPPORTED_RATIOS.includes(
+      ratio as (typeof IMAGEN_SUPPORTED_RATIOS)[number],
+    )
+  ) {
+    throw new ValidationError(
+      `Unsupported aspect ratio ${ratio} (${size.width}x${size.height}) for imagen`,
+      `Supported ratios: ${IMAGEN_SUPPORTED_RATIOS.join(", ")}`,
+    );
+  }
+}
+
 export class ImagenProvider implements Provider {
   readonly name = "imagen";
   readonly models = ["imagen-4"];
@@ -34,6 +61,7 @@ export class ImagenProvider implements Provider {
   }
 
   async generate(request: GenerateRequest): Promise<GenerateResult> {
+    validateSize(request.size);
     const aspectRatio = toAspectRatio(request.size.width, request.size.height);
 
     try {

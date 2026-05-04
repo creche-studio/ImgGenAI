@@ -57,7 +57,15 @@ async function executeForPrompt(
         "Use WxH format, e.g. --size 1024x1024",
       );
     }
-    sizeOption = { width: Number(match[1]), height: Number(match[2]) };
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    if (width <= 0 || height <= 0 || width > 8192 || height > 8192) {
+      throw new ValidationError(
+        `Invalid size value: "${flags.size}"`,
+        "Width and height must be between 1 and 8192",
+      );
+    }
+    sizeOption = { width, height };
   }
 
   const input: PipelineInput = {

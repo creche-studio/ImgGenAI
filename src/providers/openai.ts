@@ -3,7 +3,12 @@
 // ---------------------------------------------------------------------------
 
 import OpenAI from "openai";
-import { AuthError, ProviderError, RateLimitError } from "../errors/index.js";
+import {
+  AuthError,
+  ProviderError,
+  RateLimitError,
+  ValidationError,
+} from "../errors/index.js";
 import type {
   GenerateRequest,
   GenerateResult,
@@ -12,6 +17,27 @@ import type {
   ProviderDefinition,
   UsageMetadata,
 } from "../types/index.js";
+
+const OPENAI_SUPPORTED_SIZES = [
+  { width: 1024, height: 1024 },
+  { width: 1536, height: 1024 },
+  { width: 1024, height: 1536 },
+] as const;
+
+function validateSize(size: { width: number; height: number }): void {
+  const valid = OPENAI_SUPPORTED_SIZES.some(
+    (s) => s.width === size.width && s.height === size.height,
+  );
+  if (!valid) {
+    const allowed = OPENAI_SUPPORTED_SIZES.map(
+      (s) => `${s.width}x${s.height}`,
+    ).join(", ");
+    throw new ValidationError(
+      `Unsupported size ${size.width}x${size.height} for openai`,
+      `Allowed sizes: ${allowed}`,
+    );
+  }
+}
 
 export class OpenAIProvider implements Provider {
   readonly name = "openai";
@@ -24,14 +50,14 @@ export class OpenAIProvider implements Provider {
   }
 
   async generate(request: GenerateRequest): Promise<GenerateResult> {
-    const size = `${request.size.width}x${request.size.height}`;
+    validateSize(request.size);
 
     try {
       const response = await this.client.images.generate({
         model: "gpt-image-1",
         prompt: request.prompt,
         n: request.count,
-        size: size as "1024x1024" | "1536x1024" | "1024x1536" | "auto",
+        size: `${request.size.width}x${request.size.height}` as "1024x1024" | "1536x1024" | "1024x1536",
         output_format: "png",
         quality: "low",
       });

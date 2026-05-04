@@ -2,7 +2,12 @@
 // Recraft Provider – ImgGenAI
 // ---------------------------------------------------------------------------
 
-import { AuthError, ProviderError, RateLimitError } from "../errors/index.js";
+import {
+  AuthError,
+  ProviderError,
+  RateLimitError,
+  ValidationError,
+} from "../errors/index.js";
 import type {
   GenerateRequest,
   GenerateResult,
@@ -10,6 +15,21 @@ import type {
   Provider,
   ProviderDefinition,
 } from "../types/index.js";
+
+function validateSize(size: { width: number; height: number }): void {
+  if (size.width < 64 || size.height < 64) {
+    throw new ValidationError(
+      `Size too small for recraft: ${size.width}x${size.height}`,
+      "Minimum dimension is 64px",
+    );
+  }
+  if (size.width > 2048 || size.height > 2048) {
+    throw new ValidationError(
+      `Size too large for recraft: ${size.width}x${size.height}`,
+      "Maximum dimension is 2048px",
+    );
+  }
+}
 
 const ENDPOINT = "https://external.api.recraft.ai/v1/images/generations";
 
@@ -32,6 +52,7 @@ export class RecraftProvider implements Provider {
   }
 
   async generate(request: GenerateRequest): Promise<GenerateResult> {
+    validateSize(request.size);
     const body = {
       model: "recraftv4",
       prompt: request.prompt,

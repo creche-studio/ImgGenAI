@@ -3,6 +3,7 @@ import {
   AuthError,
   ProviderError,
   RateLimitError,
+  ValidationError,
 } from "../../errors/index.js";
 import type { GenerateRequest } from "../../types/index.js";
 import { RecraftProvider } from "../recraft.js";
@@ -159,5 +160,47 @@ describe("RecraftProvider", () => {
     mockFetch.mockResolvedValue(errorResponse(500));
 
     await expect(provider.generate(REQUEST)).rejects.toThrow(ProviderError);
+  });
+
+  // --- size validation -----------------------------------------------------
+
+  it("throws ValidationError when size is too small", async () => {
+    const badRequest: GenerateRequest = {
+      ...REQUEST,
+      size: { width: 32, height: 32 },
+    };
+
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      ValidationError,
+    );
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      "Size too small for recraft",
+    );
+  });
+
+  it("throws ValidationError when size is too large", async () => {
+    const badRequest: GenerateRequest = {
+      ...REQUEST,
+      size: { width: 4096, height: 4096 },
+    };
+
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      ValidationError,
+    );
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      "Size too large for recraft",
+    );
+  });
+
+  it("accepts valid sizes within range", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse({ data: [{ b64_json: "aW1hZ2Ux" }] }),
+    );
+
+    const result = await provider.generate({
+      ...REQUEST,
+      size: { width: 64, height: 2048 },
+    });
+    expect(result.images).toHaveLength(1);
   });
 });

@@ -3,6 +3,7 @@ import {
   AuthError,
   ProviderError,
   RateLimitError,
+  ValidationError,
 } from "../../errors/index.js";
 import type { GenerateRequest } from "../../types/index.js";
 import { ImagenProvider } from "../imagen.js";
@@ -102,13 +103,13 @@ describe("ImagenProvider", () => {
 
     await provider.generate({
       ...REQUEST,
-      size: { width: 1536, height: 1024 },
+      size: { width: 1024, height: 768 },
     });
 
     expect(mockGenerateImages).toHaveBeenCalledWith(
       expect.objectContaining({
         config: expect.objectContaining({
-          aspectRatio: "3:2",
+          aspectRatio: "4:3",
         }),
       }),
     );
@@ -165,5 +166,40 @@ describe("ImagenProvider", () => {
     });
 
     await expect(provider.generate(REQUEST)).rejects.toThrow(ProviderError);
+  });
+
+  // --- size validation -----------------------------------------------------
+
+  it("throws ValidationError for unsupported aspect ratio", async () => {
+    const badRequest: GenerateRequest = {
+      ...REQUEST,
+      size: { width: 1536, height: 1024 },
+    };
+
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      ValidationError,
+    );
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      "Unsupported aspect ratio",
+    );
+  });
+
+  it("accepts all supported aspect ratios", async () => {
+    mockGenerateImages.mockResolvedValue({
+      generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
+    });
+
+    // 1:1
+    await provider.generate({ ...REQUEST, size: { width: 1024, height: 1024 } });
+    // 3:4
+    await provider.generate({ ...REQUEST, size: { width: 768, height: 1024 } });
+    // 4:3
+    await provider.generate({ ...REQUEST, size: { width: 1024, height: 768 } });
+    // 9:16
+    await provider.generate({ ...REQUEST, size: { width: 576, height: 1024 } });
+    // 16:9
+    await provider.generate({ ...REQUEST, size: { width: 1024, height: 576 } });
+
+    expect(mockGenerateImages).toHaveBeenCalledTimes(5);
   });
 });

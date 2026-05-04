@@ -3,6 +3,7 @@ import {
   AuthError,
   ProviderError,
   RateLimitError,
+  ValidationError,
 } from "../../errors/index.js";
 import type { GenerateRequest } from "../../types/index.js";
 import { OpenAIProvider } from "../openai.js";
@@ -167,5 +168,36 @@ describe("OpenAIProvider", () => {
     });
 
     await expect(provider.generate(REQUEST)).rejects.toThrow(ProviderError);
+  });
+
+  // --- size validation -----------------------------------------------------
+
+  it("throws ValidationError for unsupported size", async () => {
+    const badRequest: GenerateRequest = {
+      ...REQUEST,
+      size: { width: 512, height: 512 },
+    };
+
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      ValidationError,
+    );
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      "Unsupported size 512x512 for openai",
+    );
+  });
+
+  it("accepts all supported sizes", async () => {
+    mockGenerate.mockResolvedValue({
+      data: [{ b64_json: "aGVsbG8=" }],
+    });
+
+    for (const size of [
+      { width: 1024, height: 1024 },
+      { width: 1536, height: 1024 },
+      { width: 1024, height: 1536 },
+    ]) {
+      const result = await provider.generate({ ...REQUEST, size });
+      expect(result.images).toHaveLength(1);
+    }
   });
 });
