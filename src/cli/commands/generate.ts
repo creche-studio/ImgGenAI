@@ -93,7 +93,7 @@ async function executeForPrompt(
 
   const result = await pipeline.execute(input);
 
-  if (config.json || !process.stderr.isTTY) {
+  if (config.json || !process.stdout.isTTY) {
     printJsonResult(result);
   } else {
     printResult(result);
