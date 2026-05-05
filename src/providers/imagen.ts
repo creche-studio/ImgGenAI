@@ -50,9 +50,17 @@ function validateSize(size: { width: number; height: number }): void {
   }
 }
 
+/** Map from CLI short names to API model ids. */
+const MODEL_MAP: Record<string, string> = {
+  "imagen-4-fast": "imagen-4.0-fast-generate-001",
+  "imagen-4": "imagen-4.0-generate-001",
+  "imagen-4-ultra": "imagen-4.0-ultra-generate-001",
+};
+
 export class ImagenProvider implements Provider {
   readonly name = "imagen";
-  readonly models = ["imagen-4"];
+  readonly models = ["imagen-4-fast", "imagen-4", "imagen-4-ultra"];
+  readonly defaultModel = "imagen-4";
   readonly maxPromptLength = 480;
   private readonly ai: GoogleGenAI;
 
@@ -64,9 +72,12 @@ export class ImagenProvider implements Provider {
     validateSize(request.size);
     const aspectRatio = toAspectRatio(request.size.width, request.size.height);
 
+    const requestModel = request.model ?? this.defaultModel;
+    const apiModel = MODEL_MAP[requestModel] ?? requestModel;
+
     try {
       const response = await this.ai.models.generateImages({
-        model: "imagen-4.0-generate-001",
+        model: apiModel,
         prompt: request.prompt,
         config: {
           numberOfImages: request.count,
@@ -112,7 +123,8 @@ export class ImagenProvider implements Provider {
 
 export default {
   name: "imagen",
-  models: ["imagen-4"],
+  models: ["imagen-4-fast", "imagen-4", "imagen-4-ultra"],
+  defaultModel: "imagen-4",
   envKey: "GEMINI_API_KEY",
   maxPromptLength: 480,
   factory: ({ apiKey }) => new ImagenProvider(apiKey),

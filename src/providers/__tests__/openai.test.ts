@@ -49,7 +49,10 @@ describe("OpenAIProvider", () => {
 
   it("has correct metadata", () => {
     expect(provider.name).toBe("openai");
-    expect(provider.models).toEqual(["gpt-image-1-mini", "gpt-image-1.5"]);
+    expect(provider.models).toEqual(["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]);
+    expect(provider.qualities).toEqual(["low", "medium", "high", "auto"]);
+    expect(provider.defaultModel).toBe("gpt-image-1");
+    expect(provider.defaultQuality).toBe("auto");
     expect(provider.maxPromptLength).toBe(32000);
   });
 
@@ -57,7 +60,10 @@ describe("OpenAIProvider", () => {
 
   it("default export has correct definition", () => {
     expect(openaiDef.name).toBe("openai");
-    expect(openaiDef.models).toEqual(["gpt-image-1-mini", "gpt-image-1.5"]);
+    expect(openaiDef.models).toEqual(["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]);
+    expect(openaiDef.qualities).toEqual(["low", "medium", "high", "auto"]);
+    expect(openaiDef.defaultModel).toBe("gpt-image-1");
+    expect(openaiDef.defaultQuality).toBe("auto");
     expect(openaiDef.envKey).toBe("OPENAI_API_KEY");
     expect(openaiDef.maxPromptLength).toBe(32000);
     expect(typeof openaiDef.factory).toBe("function");
@@ -103,7 +109,34 @@ describe("OpenAIProvider", () => {
     expect(result.usage).toBeUndefined();
   });
 
-  it("passes correct parameters to the SDK", async () => {
+  it("computes actualCost from usage (token-based)", async () => {
+    mockGenerate.mockResolvedValue({
+      data: [{ b64_json: "aGVsbG8=" }],
+      usage: {
+        input_tokens: 1000,
+        output_tokens: 10000,
+        input_tokens_details: { text_tokens: 800, image_tokens: 200 },
+      },
+    });
+
+    const result = await provider.generate(REQUEST);
+
+    // model defaults to gpt-image-1: text=5, image=10, output=40 USD/1M
+    // cost = (800*5 + 200*10 + 10000*40) / 1_000_000 = (4000+2000+400000)/1M = 0.406
+    expect(result.actualCost).toBeCloseTo(0.406, 6);
+  });
+
+  it("returns null actualCost when usage is absent", async () => {
+    mockGenerate.mockResolvedValue({
+      data: [{ b64_json: "aGVsbG8=" }],
+    });
+
+    const result = await provider.generate(REQUEST);
+
+    expect(result.actualCost).toBeNull();
+  });
+
+  it("passes correct parameters to the SDK (defaults)", async () => {
     mockGenerate.mockResolvedValue({
       data: [{ b64_json: "aGVsbG8=" }],
     });
@@ -116,7 +149,28 @@ describe("OpenAIProvider", () => {
       n: 1,
       size: "1024x1024",
       output_format: "png",
-      quality: "low",
+      quality: "auto",
+    });
+  });
+
+  it("passes request.model and request.quality to the SDK", async () => {
+    mockGenerate.mockResolvedValue({
+      data: [{ b64_json: "aGVsbG8=" }],
+    });
+
+    await provider.generate({
+      ...REQUEST,
+      model: "gpt-image-1.5",
+      quality: "high",
+    });
+
+    expect(mockGenerate).toHaveBeenCalledWith({
+      model: "gpt-image-1.5",
+      prompt: "a cat",
+      n: 1,
+      size: "1024x1024",
+      output_format: "png",
+      quality: "high",
     });
   });
 

@@ -49,7 +49,8 @@ describe("ImagenProvider", () => {
 
   it("has correct metadata", () => {
     expect(provider.name).toBe("imagen");
-    expect(provider.models).toEqual(["imagen-4"]);
+    expect(provider.models).toEqual(["imagen-4-fast", "imagen-4", "imagen-4-ultra"]);
+    expect(provider.defaultModel).toBe("imagen-4");
     expect(provider.maxPromptLength).toBe(480);
   });
 
@@ -57,7 +58,8 @@ describe("ImagenProvider", () => {
 
   it("default export has correct definition", () => {
     expect(imagenDef.name).toBe("imagen");
-    expect(imagenDef.models).toEqual(["imagen-4"]);
+    expect(imagenDef.models).toEqual(["imagen-4-fast", "imagen-4", "imagen-4-ultra"]);
+    expect(imagenDef.defaultModel).toBe("imagen-4");
     expect(imagenDef.envKey).toBe("GEMINI_API_KEY");
     expect(imagenDef.maxPromptLength).toBe(480);
     expect(typeof imagenDef.factory).toBe("function");
@@ -79,7 +81,7 @@ describe("ImagenProvider", () => {
     });
   });
 
-  it("passes correct parameters to the SDK", async () => {
+  it("passes correct parameters to the SDK (default model)", async () => {
     mockGenerateImages.mockResolvedValue({
       generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
     });
@@ -88,6 +90,40 @@ describe("ImagenProvider", () => {
 
     expect(mockGenerateImages).toHaveBeenCalledWith({
       model: "imagen-4.0-generate-001",
+      prompt: "a sunset",
+      config: {
+        numberOfImages: 1,
+        aspectRatio: "1:1",
+      },
+    });
+  });
+
+  it("maps CLI model name to API model id", async () => {
+    mockGenerateImages.mockResolvedValue({
+      generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
+    });
+
+    await provider.generate({ ...REQUEST, model: "imagen-4-ultra" });
+
+    expect(mockGenerateImages).toHaveBeenCalledWith({
+      model: "imagen-4.0-ultra-generate-001",
+      prompt: "a sunset",
+      config: {
+        numberOfImages: 1,
+        aspectRatio: "1:1",
+      },
+    });
+  });
+
+  it("passes API model id directly when not in modelMap", async () => {
+    mockGenerateImages.mockResolvedValue({
+      generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
+    });
+
+    await provider.generate({ ...REQUEST, model: "imagen-4.0-ultra-generate-001" });
+
+    expect(mockGenerateImages).toHaveBeenCalledWith({
+      model: "imagen-4.0-ultra-generate-001",
       prompt: "a sunset",
       config: {
         numberOfImages: 1,

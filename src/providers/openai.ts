@@ -9,6 +9,8 @@ import {
   RateLimitError,
   ValidationError,
 } from "../errors/index.js";
+import { calculateOpenAIActualCost } from "../pricing/openai-tokens.js";
+import type { OpenAIUsage } from "../pricing/openai-tokens.js";
 import type {
   GenerateRequest,
   GenerateResult,
@@ -41,7 +43,10 @@ function validateSize(size: { width: number; height: number }): void {
 
 export class OpenAIProvider implements Provider {
   readonly name = "openai";
-  readonly models = ["gpt-image-1-mini", "gpt-image-1.5"];
+  readonly models = ["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"];
+  readonly qualities = ["low", "medium", "high", "auto"] as const;
+  readonly defaultModel = "gpt-image-1";
+  readonly defaultQuality = "auto";
   readonly maxPromptLength = 32000;
   private readonly client: OpenAI;
 
@@ -52,14 +57,17 @@ export class OpenAIProvider implements Provider {
   async generate(request: GenerateRequest): Promise<GenerateResult> {
     validateSize(request.size);
 
+    const model = request.model ?? this.defaultModel;
+    const quality = request.quality ?? this.defaultQuality;
+
     try {
       const response = await this.client.images.generate({
-        model: "gpt-image-1",
+        model,
         prompt: request.prompt,
         n: request.count,
         size: `${request.size.width}x${request.size.height}` as "1024x1024" | "1536x1024" | "1024x1536",
         output_format: "png",
-        quality: "low",
+        quality: quality as "low" | "medium" | "high" | "auto",
       });
 
       const images: ImageData[] = (response.data ?? []).map((item) => ({
@@ -79,7 +87,12 @@ export class OpenAIProvider implements Provider {
             }
           : undefined;
 
-      return { images, ...(usage ? { usage } : {}) };
+      const actualCost = calculateOpenAIActualCost(
+        response.usage as OpenAIUsage | undefined,
+        model,
+      );
+
+      return { images, ...(usage ? { usage } : {}), actualCost };
     } catch (error) {
       if (error instanceof ProviderError) throw error;
 
@@ -107,7 +120,10 @@ export class OpenAIProvider implements Provider {
 
 export default {
   name: "openai",
-  models: ["gpt-image-1-mini", "gpt-image-1.5"],
+  models: ["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"],
+  qualities: ["low", "medium", "high", "auto"],
+  defaultModel: "gpt-image-1",
+  defaultQuality: "auto",
   envKey: "OPENAI_API_KEY",
   maxPromptLength: 32000,
   factory: ({ apiKey }) => new OpenAIProvider(apiKey),

@@ -58,7 +58,17 @@ describe("RecraftProvider", () => {
 
   it("has correct metadata", () => {
     expect(provider.name).toBe("recraft");
-    expect(provider.models).toEqual(["recraft-v4"]);
+    expect(provider.models).toEqual([
+      "recraft-v4",
+      "recraft-v4-pro",
+      "recraft-v3",
+      "recraft-v2",
+      "recraftv4_vector",
+      "recraftv4_pro_vector",
+      "recraftv3_vector",
+      "recraftv2_vector",
+    ]);
+    expect(provider.defaultModel).toBe("recraft-v4");
     expect(provider.maxPromptLength).toBe(1000);
   });
 
@@ -66,7 +76,17 @@ describe("RecraftProvider", () => {
 
   it("default export has correct definition", () => {
     expect(recraftDef.name).toBe("recraft");
-    expect(recraftDef.models).toEqual(["recraft-v4"]);
+    expect(recraftDef.models).toEqual([
+      "recraft-v4",
+      "recraft-v4-pro",
+      "recraft-v3",
+      "recraft-v2",
+      "recraftv4_vector",
+      "recraftv4_pro_vector",
+      "recraftv3_vector",
+      "recraftv2_vector",
+    ]);
+    expect(recraftDef.defaultModel).toBe("recraft-v4");
     expect(recraftDef.envKey).toBe("RECRAFT_API_TOKEN");
     expect(recraftDef.maxPromptLength).toBe(1000);
     expect(typeof recraftDef.factory).toBe("function");
@@ -94,7 +114,7 @@ describe("RecraftProvider", () => {
     });
   });
 
-  it("passes correct parameters to fetch", async () => {
+  it("passes correct parameters to fetch (default model)", async () => {
     mockFetch.mockResolvedValue(
       okResponse({ data: [{ b64_json: "aW1hZ2Ux" }] }),
     );
@@ -119,6 +139,32 @@ describe("RecraftProvider", () => {
         }),
       },
     );
+  });
+
+  it("maps CLI model name to API model id", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse({ data: [{ b64_json: "aW1hZ2Ux" }] }),
+    );
+
+    await provider.generate({ ...REQUEST, model: "recraft-v4-pro" });
+
+    const callBody = JSON.parse(
+      (mockFetch.mock.calls[0][1] as { body: string }).body,
+    );
+    expect(callBody.model).toBe("recraftv4_pro");
+  });
+
+  it("passes vector API model id directly (no map needed)", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse({ data: [{ b64_json: "aW1hZ2Ux" }] }),
+    );
+
+    await provider.generate({ ...REQUEST, model: "recraftv4_vector" });
+
+    const callBody = JSON.parse(
+      (mockFetch.mock.calls[0][1] as { body: string }).body,
+    );
+    expect(callBody.model).toBe("recraftv4_vector");
   });
 
   // --- error: 0 images -----------------------------------------------------
@@ -202,5 +248,50 @@ describe("RecraftProvider", () => {
       size: { width: 64, height: 2048 },
     });
     expect(result.images).toHaveLength(1);
+  });
+
+  // --- getBalance ----------------------------------------------------------
+
+  describe("getBalance", () => {
+    it("returns BalanceInfo with credits converted to USD", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ credits: 4210 }),
+      });
+
+      const balance = await provider.getBalance();
+
+      expect(balance).toEqual({
+        provider: "recraft",
+        usd: 4.21,
+        raw: 4210,
+      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://external.api.recraft.ai/v1/users/me",
+        expect.objectContaining({
+          headers: { Authorization: "Bearer recraft-key" },
+        }),
+      );
+    });
+
+    it("returns null when API returns non-ok response", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+      });
+
+      const balance = await provider.getBalance();
+
+      expect(balance).toBeNull();
+    });
+
+    it("returns null when fetch throws", async () => {
+      mockFetch.mockRejectedValue(new Error("network error"));
+
+      const balance = await provider.getBalance();
+
+      expect(balance).toBeNull();
+    });
   });
 });
