@@ -57,6 +57,10 @@ const generateCmd = new Command("generate")
   .option("-q, --quiet", "Suppress non-essential output")
   .option("-d, --debug", "Show debug information")
   .option("-n, --dry-run", "Show what would be done")
+  .option("--tier <tier>", "Tier alias: premium, standard, economy (default: standard)")
+  .option("--model <id>", "Provider-internal model id")
+  .option("--quality <q>", "Quality level (openai: low/medium/high/auto)")
+  .option("--vector", "Recraft vector tier alias")
   .action(
     async (prompt: string | undefined, cmdOpts: Record<string, unknown>) => {
       // Merge parent (program) options
@@ -89,6 +93,10 @@ const generateCmd = new Command("generate")
         quiet: (cmdOpts.quiet as boolean) ?? false,
         debug: (cmdOpts.debug as boolean) ?? false,
         dryRun: (cmdOpts.dryRun as boolean) ?? false,
+        tier: cmdOpts.tier as string | undefined,
+        model: cmdOpts.model as string | undefined,
+        quality: cmdOpts.quality as string | undefined,
+        vector: (cmdOpts.vector as boolean) ?? false,
       };
 
       const code = await runGenerate(prompt, flags);

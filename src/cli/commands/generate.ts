@@ -7,8 +7,10 @@ import { resolveConfig } from "../../core/config.js";
 import type { FlagValues } from "../../core/config.js";
 import { createPipeline } from "../../core/index.js";
 import { AppError, ConfigError, ValidationError } from "../../errors/index.js";
-import type { PipelineInput, PipelineResult, ProviderName } from "../../types/index.js";
+import type { PipelineInput, PipelineResult, ProviderEntry, ProviderName } from "../../types/index.js";
 import { isProviderName } from "../../types/index.js";
+import { isTier, resolveTier, DEFAULT_TIER } from "../aliases.js";
+import type { Tier } from "../aliases.js";
 import {
   printDryRun,
   printGeneratingHeader,
@@ -26,6 +28,10 @@ export interface GenerateFlags {
   quiet?: boolean;
   debug?: boolean;
   dryRun?: boolean;
+  tier?: string;
+  model?: string;
+  quality?: string;
+  vector?: boolean;
 }
 
 function parseCount(raw: number | undefined): number | undefined {
@@ -59,8 +65,79 @@ function buildFlagValues(flags: GenerateFlags): FlagValues {
     quiet: flags.quiet,
     debug: flags.debug,
     dryRun: flags.dryRun,
+    model: flags.model,
+    quality: flags.quality,
+    tier: flags.tier,
+    vector: flags.vector,
   };
 }
+
+/**
+ * Resolve CLI flags into ProviderEntry[] with model/quality populated.
+ *
+ * Validation rules (§2-2):
+ * - --tier + --model → ValidationError
+ * - Unknown --tier value → ValidationError
+ * - --quality on quality-unsupported providers only → ValidationError
+ */
+export function resolveProviderEntries(
+  providerNames: ProviderName[],
+  flags: GenerateFlags,
+  providerQualities: Record<string, readonly string[] | undefined>,
+): ProviderEntry[] {
+  // --tier and --model are mutually exclusive
+  if (flags.tier !== undefined && flags.model !== undefined) {
+    throw new ValidationError(
+      "--tier and --model cannot be used together",
+      "Pick one: --tier <premium|standard|economy> or --model <internal-name>",
+    );
+  }
+
+  // Validate --tier value
+  if (flags.tier !== undefined && !isTier(flags.tier)) {
+    throw new ValidationError(
+      `Invalid --tier: "${flags.tier}"`,
+      "Allowed: premium, standard, economy",
+    );
+  }
+
+  const tier: Tier | undefined = flags.tier as Tier | undefined;
+  const vector = flags.vector ?? false;
+
+  const entries: ProviderEntry[] = providerNames.map((name) => {
+    const modelId = flags.model ?? resolveTier(name, tier ?? DEFAULT_TIER, vector);
+    const qualities = providerQualities[name];
+    const qualityVal = qualities ? flags.quality : undefined;
+    return {
+      name,
+      ...(modelId !== undefined ? { model: modelId } : {}),
+      ...(qualityVal !== undefined ? { quality: qualityVal } : {}),
+    };
+  });
+
+  // --quality specified but no provider supports it → ValidationError
+  if (flags.quality !== undefined) {
+    const anySupports = providerNames.some((name) => providerQualities[name] !== undefined);
+    if (!anySupports) {
+      throw new ValidationError(
+        "--quality is not supported by any of the specified providers",
+        "Only openai accepts --quality; drop the flag or add `-p openai`",
+      );
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Known provider quality support. Used by CLI layer to determine whether
+ * --quality should be forwarded to a given provider.
+ */
+const PROVIDER_QUALITIES: Record<string, readonly string[] | undefined> = {
+  openai: ["low", "medium", "high", "auto"],
+  recraft: undefined,
+  imagen: undefined,
+};
 
 async function executeForPrompt(
   prompt: string,
@@ -94,9 +171,10 @@ async function executeForPrompt(
   }
 
   // Validate provider names early (CLI layer)
-  const providers = config.providers.map((name) => ({
-    name: validateProviderName(name),
-  }));
+  const providerNames = config.providers.map((name) => validateProviderName(name));
+
+  // Resolve provider entries with model/quality from --tier/--model/--quality/--vector
+  const providers = resolveProviderEntries(providerNames, flags, PROVIDER_QUALITIES);
 
   const input: PipelineInput = {
     prompt,
@@ -112,13 +190,7 @@ async function executeForPrompt(
   if (config.dryRun) {
     const result = await pipeline.execute(input, { dryRun: true });
     if (!config.json) {
-      printDryRun(
-        prompt,
-        config.providers,
-        config.count,
-        config.preset,
-        result.outputDir,
-      );
+      printDryRun(prompt, providers, config.count, config.preset, result);
     } else {
       printJsonResult(result);
     }
@@ -126,7 +198,7 @@ async function executeForPrompt(
   }
 
   if (!config.quiet && !config.json) {
-    printGeneratingHeader(config.providers, config.count);
+    printGeneratingHeader(providers, config.count);
   }
 
   const result = await pipeline.execute(input);

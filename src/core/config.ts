@@ -16,6 +16,10 @@ export interface FlagValues {
   quiet?: boolean;
   debug?: boolean;
   dryRun?: boolean;
+  model?: string;
+  quality?: string;
+  tier?: string;
+  vector?: boolean;
 }
 
 /** Fully resolved configuration (no optional primitives). */
