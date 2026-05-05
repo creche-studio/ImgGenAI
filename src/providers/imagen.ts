@@ -45,7 +45,7 @@ function validateSize(size: { width: number; height: number }): void {
   ) {
     throw new ValidationError(
       `Unsupported aspect ratio ${ratio} (${size.width}x${size.height}) for imagen`,
-      `Supported ratios: ${IMAGEN_SUPPORTED_RATIOS.join(", ")}`,
+      `Supported ratios: ${IMAGEN_SUPPORTED_RATIOS.join(", ")} (e.g. 1024x1024, 768x1024, 1024x768, 720x1280, 1280x720)`,
     );
   }
 }

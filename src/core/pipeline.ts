@@ -2,7 +2,7 @@
 // Pipeline – ImgGenAI
 // ---------------------------------------------------------------------------
 
-import { ValidationError } from "../errors/index.js";
+import { AppError, ValidationError } from "../errors/index.js";
 import type { record as RecordFn } from "../manifest/index.js";
 import type { PresetRegistry } from "../presets/registry.js";
 import type { CostQuery } from "../pricing/index.js";
@@ -232,13 +232,15 @@ export class Pipeline {
         return s.value;
       }
       const entry = input.providers[idx];
+      const reason = s.reason;
       return {
         provider: entry.name,
         model: entry.model ?? "",
         success: false,
         outputs: [],
         duration: 0,
-        error: s.reason instanceof Error ? s.reason.message : String(s.reason),
+        error: reason instanceof Error ? reason.message : String(reason),
+        hint: reason instanceof AppError ? reason.hint : undefined,
         cost: null,
       };
     });

@@ -151,5 +151,8 @@ function printProviderResult(r: ProviderResult): void {
       process.stderr.write(`  "${r.error}"`);
     }
     process.stderr.write("\n");
+    if (r.hint) {
+      process.stderr.write(`${"".padEnd(12)}  ${r.hint}\n`);
+    }
   }
 }
