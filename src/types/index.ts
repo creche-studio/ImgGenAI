@@ -118,6 +118,7 @@ export interface ProviderResult {
   readonly outputs: string[];
   readonly duration: number;
   readonly error?: string;
+  readonly hint?: string;
   readonly cost: number | null;
   readonly costSource?: CostSource;
 }
