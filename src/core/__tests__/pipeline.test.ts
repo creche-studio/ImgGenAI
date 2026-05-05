@@ -3,6 +3,7 @@ import { ValidationError } from "../../errors/index.js";
 import { PresetRegistry } from "../../presets/registry.js";
 import { ProviderRegistry } from "../../providers/registry.js";
 import type {
+  BalanceInfo,
   ManifestEntry,
   Provider,
   ProviderDefinition,
@@ -366,5 +367,513 @@ describe("Pipeline", () => {
         providers: [],
       }),
     ).rejects.toThrow(ValidationError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pipeline – Cost & Balance Integration
+// ---------------------------------------------------------------------------
+
+describe("Pipeline – cost resolution", () => {
+  it("uses actualCost from provider when available (costSource=actual)", async () => {
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          actualCost: 0.055,
+        }),
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+    const mockPricing = () => 0.042; // static estimate should be ignored
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const result = await pipeline.execute(
+      { prompt: "cost test", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.results[0].cost).toBe(0.055);
+    expect(result.results[0].costSource).toBe("actual");
+  });
+
+  it("falls back to static estimate when actualCost is null (costSource=estimated)", async () => {
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          actualCost: null,
+        }),
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+    const mockPricing = () => 0.042;
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const result = await pipeline.execute(
+      { prompt: "cost test", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.results[0].cost).toBe(0.042);
+    expect(result.results[0].costSource).toBe("estimated");
+  });
+
+  it("returns cost=null when both actual and static are unavailable", async () => {
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+        }),
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+    const mockPricing = () => null;
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const result = await pipeline.execute(
+      { prompt: "no cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.results[0].cost).toBeNull();
+    expect(result.results[0].costSource).toBeUndefined();
+  });
+
+  it("ignores actualCost <= 0 and uses static estimate", async () => {
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          actualCost: 0,
+        }),
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+    const mockPricing = () => 0.03;
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const result = await pipeline.execute(
+      { prompt: "zero cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.results[0].cost).toBe(0.03);
+    expect(result.results[0].costSource).toBe("estimated");
+  });
+
+  it("computes totalCost as sum of all non-null costs", async () => {
+    const defA = makeDef({
+      name: "alpha",
+      envKey: "ALPHA_KEY",
+      factory: () => ({
+        name: "alpha",
+        models: ["a-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          actualCost: 0.05,
+        }),
+      }),
+    });
+    const defB = makeDef({
+      name: "beta",
+      envKey: "BETA_KEY",
+      factory: () => ({
+        name: "beta",
+        models: ["b-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          actualCost: 0.03,
+        }),
+      }),
+    });
+
+    const providerRegistry = makeProviderRegistry(defA, defB);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const result = await pipeline.execute(
+      {
+        prompt: "total cost",
+        providers: [{ name: pn("alpha") }, { name: pn("beta") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
+      {},
+    );
+
+    expect(result.totalCost).toBeCloseTo(0.08);
+  });
+
+  it("totalCost is null when all provider costs are null", async () => {
+    const providerRegistry = makeProviderRegistry(makeDef());
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+    const mockPricing = () => null;
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const result = await pipeline.execute(
+      { prompt: "null cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.totalCost).toBeNull();
+  });
+
+  it("passes model and quality to provider.generate()", async () => {
+    let capturedModel: string | undefined;
+    let capturedQuality: string | undefined;
+
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1", "mock-v2"],
+        defaultModel: "mock-v1",
+        qualities: ["low", "high"],
+        defaultQuality: "low",
+        maxPromptLength: 1000,
+        generate: async (req) => {
+          capturedModel = req.model;
+          capturedQuality = req.quality;
+          return {
+            images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          };
+        },
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    await pipeline.execute(
+      {
+        prompt: "propagation test",
+        providers: [{ name: pn("mock"), model: "mock-v2", quality: "high" }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
+      {},
+    );
+
+    expect(capturedModel).toBe("mock-v2");
+    expect(capturedQuality).toBe("high");
+  });
+
+  it("uses provider defaultModel/defaultQuality when entry does not specify", async () => {
+    let capturedModel: string | undefined;
+    let capturedQuality: string | undefined;
+
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1", "mock-v2"],
+        defaultModel: "mock-v2",
+        qualities: ["low", "high"],
+        defaultQuality: "high",
+        maxPromptLength: 1000,
+        generate: async (req) => {
+          capturedModel = req.model;
+          capturedQuality = req.quality;
+          return {
+            images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          };
+        },
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    await pipeline.execute(
+      {
+        prompt: "default test",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
+      {},
+    );
+
+    expect(capturedModel).toBe("mock-v2");
+    expect(capturedQuality).toBe("high");
+  });
+
+  it("manifest entry contains cost and costSource", async () => {
+    const recorded: ManifestEntry[] = [];
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          actualCost: 0.123,
+        }),
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async (entry: ManifestEntry, _dir: string) => {
+      recorded.push(entry);
+      return "manifest.json";
+    };
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    await pipeline.execute(
+      { prompt: "manifest cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(recorded[0].cost).toBe(0.123);
+    expect(recorded[0].costSource).toBe("actual");
+  });
+
+  it("dry-run computes estimated cost without calling generate", async () => {
+    const generateFn = vi.fn();
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        defaultModel: "mock-v1",
+        maxPromptLength: 1000,
+        generate: generateFn,
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+    const mockPricing = () => 0.042;
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const result = await pipeline.execute(
+      { prompt: "dry cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      { dryRun: true },
+    );
+
+    expect(generateFn).not.toHaveBeenCalled();
+    expect(result.results[0].cost).toBe(0.042);
+    expect(result.results[0].costSource).toBe("estimated");
+    expect(result.totalCost).toBe(0.042);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pipeline – Balance resolution
+// ---------------------------------------------------------------------------
+
+describe("Pipeline – balance resolution", () => {
+  it("resolves balances from providers that implement getBalance()", async () => {
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+        }),
+        getBalance: async (): Promise<BalanceInfo> => ({
+          provider: "mock",
+          usd: 4.21,
+          raw: 4210,
+        }),
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const result = await pipeline.execute(
+      { prompt: "balance test", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.balances).toHaveLength(1);
+    expect(result.balances![0]).toEqual({ provider: "mock", usd: 4.21, raw: 4210 });
+  });
+
+  it("returns usd=null for providers without getBalance", async () => {
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+        }),
+        // No getBalance method
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const result = await pipeline.execute(
+      { prompt: "no balance", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.balances).toHaveLength(1);
+    expect(result.balances![0]).toEqual({ provider: "mock", usd: null });
+  });
+
+  it("handles getBalance() throwing an error gracefully", async () => {
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+        }),
+        getBalance: async (): Promise<BalanceInfo | null> => {
+          throw new Error("network timeout");
+        },
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const result = await pipeline.execute(
+      { prompt: "error balance", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.balances).toHaveLength(1);
+    expect(result.balances![0].provider).toBe("mock");
+    expect(result.balances![0].usd).toBeNull();
+    expect(result.balances![0].error).toBe("network timeout");
+  });
+
+  it("deduplicates balances when same provider appears multiple times", async () => {
+    let balanceCalls = 0;
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+        }),
+        getBalance: async (): Promise<BalanceInfo> => {
+          balanceCalls++;
+          return { provider: "mock", usd: 10.0 };
+        },
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const result = await pipeline.execute(
+      {
+        prompt: "dedup balance",
+        providers: [{ name: pn("mock") }, { name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
+      {},
+    );
+
+    // Should only call getBalance once even though provider appears twice
+    expect(balanceCalls).toBe(1);
+    expect(result.balances).toHaveLength(1);
+  });
+
+  it("handles getBalance() returning null", async () => {
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+        }),
+        getBalance: async (): Promise<BalanceInfo | null> => null,
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const result = await pipeline.execute(
+      { prompt: "null balance", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {},
+    );
+
+    expect(result.balances).toHaveLength(1);
+    expect(result.balances![0]).toEqual({ provider: "mock", usd: null });
+  });
+
+  it("dry-run does not resolve balances", async () => {
+    let balanceCalled = false;
+    const def = makeDef({
+      factory: () => ({
+        name: "mock",
+        models: ["mock-v1"],
+        maxPromptLength: 1000,
+        generate: async () => ({
+          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+        }),
+        getBalance: async (): Promise<BalanceInfo> => {
+          balanceCalled = true;
+          return { provider: "mock", usd: 5.0 };
+        },
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const result = await pipeline.execute(
+      { prompt: "dry balance", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      { dryRun: true },
+    );
+
+    expect(balanceCalled).toBe(false);
+    expect(result.balances).toBeUndefined();
   });
 });

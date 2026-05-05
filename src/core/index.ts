@@ -6,6 +6,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { record } from "../manifest/index.js";
 import { PresetRegistry } from "../presets/registry.js";
+import { calculateCost } from "../pricing/index.js";
 import {
   ProviderRegistry,
   registerBuiltinProviders,
@@ -32,8 +33,8 @@ export function createPipeline(): Pipeline {
   const builtinPresetsDir = path.resolve(currentDir, "../../presets");
   presetRegistry.loadFromDirectories([builtinPresetsDir]);
 
-  // 3. Pipeline
-  return new Pipeline(providerRegistry, presetRegistry, record, new FsOutputWriter());
+  // 3. Pipeline (with pricing DI)
+  return new Pipeline(providerRegistry, presetRegistry, record, new FsOutputWriter(), calculateCost);
 }
 
 // ---------------------------------------------------------------------------
@@ -57,6 +58,8 @@ export { record } from "../manifest/index.js";
 
 export type { FlagValues, ResolvedConfig } from "./config.js";
 export type {
+  BalanceInfo,
+  CostSource,
   PipelineInput,
   PipelineResult,
   ProviderResult,
@@ -70,6 +73,7 @@ export type {
   GenerateResult,
   ImageData,
   ManifestEntry,
+  UsageMetadata,
 } from "../types/index.js";
 export { isProviderName } from "../types/index.js";
 export type { ProviderInfo } from "../providers/index.js";
