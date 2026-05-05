@@ -3,18 +3,50 @@
 // ---------------------------------------------------------------------------
 
 import OpenAI from "openai";
-import { AuthError, ProviderError, RateLimitError } from "../errors/index.js";
+import {
+  AuthError,
+  ProviderError,
+  RateLimitError,
+  ValidationError,
+} from "../errors/index.js";
+import { calculateOpenAIActualCost } from "../pricing/openai-tokens.js";
+import type { OpenAIUsage } from "../pricing/openai-tokens.js";
 import type {
   GenerateRequest,
   GenerateResult,
   ImageData,
   Provider,
   ProviderDefinition,
+  UsageMetadata,
 } from "../types/index.js";
+
+const OPENAI_SUPPORTED_SIZES = [
+  { width: 1024, height: 1024 },
+  { width: 1536, height: 1024 },
+  { width: 1024, height: 1536 },
+] as const;
+
+function validateSize(size: { width: number; height: number }): void {
+  const valid = OPENAI_SUPPORTED_SIZES.some(
+    (s) => s.width === size.width && s.height === size.height,
+  );
+  if (!valid) {
+    const allowed = OPENAI_SUPPORTED_SIZES.map(
+      (s) => `${s.width}x${s.height}`,
+    ).join(", ");
+    throw new ValidationError(
+      `Unsupported size ${size.width}x${size.height} for openai`,
+      `Allowed sizes: ${allowed}`,
+    );
+  }
+}
 
 export class OpenAIProvider implements Provider {
   readonly name = "openai";
-  readonly models = ["gpt-image-1-mini", "gpt-image-1.5"];
+  readonly models = ["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"];
+  readonly qualities = ["low", "medium", "high", "auto"] as const;
+  readonly defaultModel = "gpt-image-1";
+  readonly defaultQuality = "auto";
   readonly maxPromptLength = 32000;
   private readonly client: OpenAI;
 
@@ -23,16 +55,19 @@ export class OpenAIProvider implements Provider {
   }
 
   async generate(request: GenerateRequest): Promise<GenerateResult> {
-    const size = `${request.size.width}x${request.size.height}`;
+    validateSize(request.size);
+
+    const model = request.model ?? this.defaultModel;
+    const quality = request.quality ?? this.defaultQuality;
 
     try {
       const response = await this.client.images.generate({
-        model: "gpt-image-1",
+        model,
         prompt: request.prompt,
         n: request.count,
-        size: size as "1024x1024" | "1536x1024" | "1024x1536" | "auto",
+        size: `${request.size.width}x${request.size.height}` as "1024x1024" | "1536x1024" | "1024x1536",
         output_format: "png",
-        quality: "low",
+        quality: quality as "low" | "medium" | "high" | "auto",
       });
 
       const images: ImageData[] = (response.data ?? []).map((item) => ({
@@ -44,18 +79,35 @@ export class OpenAIProvider implements Provider {
         throw new ProviderError(`${this.name}: API returned 0 images`);
       }
 
-      return { images };
+      const usage: UsageMetadata | undefined =
+        response.usage
+          ? {
+              inputTokens: response.usage.input_tokens,
+              outputTokens: response.usage.output_tokens,
+            }
+          : undefined;
+
+      const actualCost = calculateOpenAIActualCost(
+        response.usage as OpenAIUsage | undefined,
+        model,
+      );
+
+      return { images, ...(usage ? { usage } : {}), actualCost };
     } catch (error) {
       if (error instanceof ProviderError) throw error;
 
       const apiError = error as { status?: number; message?: string };
       if (apiError.status === 429) {
-        throw new RateLimitError(`${this.name}: rate limited`);
+        throw new RateLimitError(
+          `${this.name}: rate limited`,
+          "Wait a moment and retry, or check your usage limits at platform.openai.com",
+        );
       }
       if (apiError.status === 401 || apiError.status === 403) {
         throw new AuthError(
           `${this.name}: authentication failed`,
           apiError.status,
+          "Verify OPENAI_API_KEY is valid: export OPENAI_API_KEY=sk-...",
         );
       }
       throw new ProviderError(
@@ -68,7 +120,10 @@ export class OpenAIProvider implements Provider {
 
 export default {
   name: "openai",
-  models: ["gpt-image-1-mini", "gpt-image-1.5"],
+  models: ["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"],
+  qualities: ["low", "medium", "high", "auto"],
+  defaultModel: "gpt-image-1",
+  defaultQuality: "auto",
   envKey: "OPENAI_API_KEY",
   maxPromptLength: 32000,
   factory: ({ apiKey }) => new OpenAIProvider(apiKey),

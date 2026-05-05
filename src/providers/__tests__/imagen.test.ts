@@ -3,6 +3,7 @@ import {
   AuthError,
   ProviderError,
   RateLimitError,
+  ValidationError,
 } from "../../errors/index.js";
 import type { GenerateRequest } from "../../types/index.js";
 import { ImagenProvider } from "../imagen.js";
@@ -48,7 +49,8 @@ describe("ImagenProvider", () => {
 
   it("has correct metadata", () => {
     expect(provider.name).toBe("imagen");
-    expect(provider.models).toEqual(["imagen-4"]);
+    expect(provider.models).toEqual(["imagen-4-fast", "imagen-4", "imagen-4-ultra"]);
+    expect(provider.defaultModel).toBe("imagen-4");
     expect(provider.maxPromptLength).toBe(480);
   });
 
@@ -56,7 +58,8 @@ describe("ImagenProvider", () => {
 
   it("default export has correct definition", () => {
     expect(imagenDef.name).toBe("imagen");
-    expect(imagenDef.models).toEqual(["imagen-4"]);
+    expect(imagenDef.models).toEqual(["imagen-4-fast", "imagen-4", "imagen-4-ultra"]);
+    expect(imagenDef.defaultModel).toBe("imagen-4");
     expect(imagenDef.envKey).toBe("GEMINI_API_KEY");
     expect(imagenDef.maxPromptLength).toBe(480);
     expect(typeof imagenDef.factory).toBe("function");
@@ -78,7 +81,7 @@ describe("ImagenProvider", () => {
     });
   });
 
-  it("passes correct parameters to the SDK", async () => {
+  it("passes correct parameters to the SDK (default model)", async () => {
     mockGenerateImages.mockResolvedValue({
       generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
     });
@@ -95,6 +98,40 @@ describe("ImagenProvider", () => {
     });
   });
 
+  it("maps CLI model name to API model id", async () => {
+    mockGenerateImages.mockResolvedValue({
+      generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
+    });
+
+    await provider.generate({ ...REQUEST, model: "imagen-4-ultra" });
+
+    expect(mockGenerateImages).toHaveBeenCalledWith({
+      model: "imagen-4.0-ultra-generate-001",
+      prompt: "a sunset",
+      config: {
+        numberOfImages: 1,
+        aspectRatio: "1:1",
+      },
+    });
+  });
+
+  it("passes API model id directly when not in modelMap", async () => {
+    mockGenerateImages.mockResolvedValue({
+      generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
+    });
+
+    await provider.generate({ ...REQUEST, model: "imagen-4.0-ultra-generate-001" });
+
+    expect(mockGenerateImages).toHaveBeenCalledWith({
+      model: "imagen-4.0-ultra-generate-001",
+      prompt: "a sunset",
+      config: {
+        numberOfImages: 1,
+        aspectRatio: "1:1",
+      },
+    });
+  });
+
   it("computes aspect ratio correctly for non-square sizes", async () => {
     mockGenerateImages.mockResolvedValue({
       generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
@@ -102,13 +139,13 @@ describe("ImagenProvider", () => {
 
     await provider.generate({
       ...REQUEST,
-      size: { width: 1536, height: 1024 },
+      size: { width: 1024, height: 768 },
     });
 
     expect(mockGenerateImages).toHaveBeenCalledWith(
       expect.objectContaining({
         config: expect.objectContaining({
-          aspectRatio: "3:2",
+          aspectRatio: "4:3",
         }),
       }),
     );
@@ -165,5 +202,40 @@ describe("ImagenProvider", () => {
     });
 
     await expect(provider.generate(REQUEST)).rejects.toThrow(ProviderError);
+  });
+
+  // --- size validation -----------------------------------------------------
+
+  it("throws ValidationError for unsupported aspect ratio", async () => {
+    const badRequest: GenerateRequest = {
+      ...REQUEST,
+      size: { width: 1536, height: 1024 },
+    };
+
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      ValidationError,
+    );
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      "Unsupported aspect ratio",
+    );
+  });
+
+  it("accepts all supported aspect ratios", async () => {
+    mockGenerateImages.mockResolvedValue({
+      generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
+    });
+
+    // 1:1
+    await provider.generate({ ...REQUEST, size: { width: 1024, height: 1024 } });
+    // 3:4
+    await provider.generate({ ...REQUEST, size: { width: 768, height: 1024 } });
+    // 4:3
+    await provider.generate({ ...REQUEST, size: { width: 1024, height: 768 } });
+    // 9:16
+    await provider.generate({ ...REQUEST, size: { width: 576, height: 1024 } });
+    // 16:9
+    await provider.generate({ ...REQUEST, size: { width: 1024, height: 576 } });
+
+    expect(mockGenerateImages).toHaveBeenCalledTimes(5);
   });
 });

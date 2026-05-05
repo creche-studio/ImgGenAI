@@ -2,22 +2,34 @@
 // Human-friendly TTY Output – ImgGenAI
 // ---------------------------------------------------------------------------
 
-import type { PipelineResult, ProviderResult } from "../../types/index.js";
+import type { PipelineResult, ProviderEntry, ProviderResult } from "../../types/index.js";
 
 function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+function formatCost(usd: number): string {
+  return `$${usd.toFixed(usd < 0.01 ? 4 : usd < 1 ? 3 : 2)}`;
+}
+
 /**
  * Print the "Generating with ..." header to stderr.
+ * Includes model and quality info per provider when available.
  */
 export function printGeneratingHeader(
-  providers: string[],
+  providers: ProviderEntry[],
   count: number,
 ): void {
-  const names = providers.join(", ");
+  const parts = providers.map((pe) => {
+    const details: string[] = [];
+    if (pe.model) details.push(pe.model);
+    if (pe.quality) details.push(pe.quality);
+    return details.length > 0
+      ? `${pe.name} (${details.join(", ")})`
+      : pe.name;
+  });
   const suffix = count > 1 ? ` (${count} images each)` : "";
-  process.stderr.write(`Generating with ${names}${suffix}...\n\n`);
+  process.stderr.write(`Generating with ${parts.join(", ")}${suffix}...\n\n`);
 }
 
 /**
@@ -25,19 +37,32 @@ export function printGeneratingHeader(
  */
 export function printDryRun(
   prompt: string,
-  providers: string[],
+  providers: ProviderEntry[],
   count: number,
   preset: string | undefined,
-  outputDir: string,
+  result: PipelineResult,
 ): void {
   process.stderr.write("Dry run — no images will be generated.\n\n");
   process.stderr.write(`  Prompt:    "${prompt}"\n`);
-  process.stderr.write(`  Providers: ${providers.join(", ")}\n`);
+  const providerDescs = providers.map((pe) => {
+    const details: string[] = [];
+    if (pe.model) details.push(pe.model);
+    if (pe.quality) details.push(pe.quality);
+    return details.length > 0
+      ? `${pe.name} (${details.join(", ")})`
+      : pe.name;
+  });
+  process.stderr.write(`  Providers: ${providerDescs.join(", ")}\n`);
   process.stderr.write(`  Count:     ${count}\n`);
   if (preset) {
     process.stderr.write(`  Preset:    ${preset}\n`);
   }
-  process.stderr.write(`  Output:    ${outputDir}\n`);
+  process.stderr.write(`  Output:    ${result.outputDir}\n`);
+
+  // Cost (estimated, dry-run)
+  if (result.totalCost !== undefined && result.totalCost !== null) {
+    process.stderr.write(`  Cost:      ${formatCost(result.totalCost)} (estimated, no API calls made)\n`);
+  }
 }
 
 /**
@@ -68,20 +93,60 @@ export function printResult(result: PipelineResult): void {
     }
   }
 
-  process.stderr.write(
-    `\nTotal: ${totalImages} images, ${formatDuration(maxDuration)}\n`,
-  );
+  // Summary line
+  const summaryParts: string[] = [];
+  summaryParts.push(`Total: ${totalImages} images, ${formatDuration(maxDuration)}`);
+  process.stderr.write(`\n${summaryParts.join("")}\n`);
+
+  // Cost line
+  const costLine = formatCostSummary(result);
+  if (costLine) {
+    process.stderr.write(`${costLine}\n`);
+  }
+}
+
+function formatCostSummary(result: PipelineResult): string | null {
+  const { results, balances, totalCost } = result;
+
+  // Cost part
+  let costStr: string;
+  if (totalCost === undefined || totalCost === null) {
+    // Check if all costs are null
+    const allNull = results.every((r) => r.cost === null);
+    if (allNull) {
+      costStr = "Cost: N/A";
+    } else {
+      costStr = "Cost: N/A";
+    }
+  } else {
+    const hasNull = results.some((r) => r.cost === null);
+    costStr = hasNull
+      ? `Cost: ${formatCost(totalCost)} (partial)`
+      : `Cost: ${formatCost(totalCost)}`;
+  }
+
+  // Balance part
+  let balanceStr = "";
+  if (balances && balances.length > 0) {
+    const parts = balances.map((b) => {
+      return b.usd !== null ? `${b.provider} ${formatCost(b.usd)}` : `${b.provider} N/A`;
+    });
+    balanceStr = ` | Balance: ${parts.join(", ")}`;
+  }
+
+  return `${costStr}${balanceStr}`;
 }
 
 function printProviderResult(r: ProviderResult): void {
   if (r.success) {
     const count = r.outputs.length;
     const label = count === 1 ? "image" : "images";
+    const costPart = r.cost !== null ? `  ${formatCost(r.cost)}` : "";
     process.stderr.write(
-      `  ${r.provider.padEnd(8)} \u2713  ${count} ${label}  ${formatDuration(r.duration)}\n`,
+      `  ${r.provider.padEnd(8)} ✓  ${count} ${label}  ${formatDuration(r.duration)}${costPart}\n`,
     );
   } else {
-    process.stderr.write(`  ${r.provider.padEnd(8)} \u2717  failed`);
+    process.stderr.write(`  ${r.provider.padEnd(8)} ✗  failed`);
     if (r.error) {
       process.stderr.write(`  "${r.error}"`);
     }

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { ConfigError, ValidationError } from "../errors/index.js";
-import type { Provider, ProviderDefinition } from "../types/index.js";
+import type { Provider, ProviderDefinition, ProviderName } from "../types/index.js";
 
 /** Summary info returned by `list()`. */
 export interface ProviderInfo {
@@ -25,7 +25,7 @@ export class ProviderRegistry {
    * Reads the API key from `env` (defaults to `process.env`).
    */
   resolve(
-    name: string,
+    name: ProviderName,
     env: Record<string, string | undefined> = process.env,
   ): Provider {
     const def = this.defs.get(name);
@@ -60,7 +60,7 @@ export class ProviderRegistry {
   }
 
   /** Check whether a provider is registered. */
-  has(name: string): boolean {
+  has(name: ProviderName): boolean {
     return this.defs.has(name);
   }
 }

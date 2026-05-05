@@ -3,7 +3,12 @@
 // ---------------------------------------------------------------------------
 
 import { GoogleGenAI } from "@google/genai";
-import { AuthError, ProviderError, RateLimitError } from "../errors/index.js";
+import {
+  AuthError,
+  ProviderError,
+  RateLimitError,
+  ValidationError,
+} from "../errors/index.js";
 import type {
   GenerateRequest,
   GenerateResult,
@@ -23,9 +28,39 @@ function toAspectRatio(width: number, height: number): string {
   return `${width / d}:${height / d}`;
 }
 
+const IMAGEN_SUPPORTED_RATIOS = [
+  "1:1",
+  "3:4",
+  "4:3",
+  "9:16",
+  "16:9",
+] as const;
+
+function validateSize(size: { width: number; height: number }): void {
+  const ratio = toAspectRatio(size.width, size.height);
+  if (
+    !IMAGEN_SUPPORTED_RATIOS.includes(
+      ratio as (typeof IMAGEN_SUPPORTED_RATIOS)[number],
+    )
+  ) {
+    throw new ValidationError(
+      `Unsupported aspect ratio ${ratio} (${size.width}x${size.height}) for imagen`,
+      `Supported ratios: ${IMAGEN_SUPPORTED_RATIOS.join(", ")}`,
+    );
+  }
+}
+
+/** Map from CLI short names to API model ids. */
+const MODEL_MAP: Record<string, string> = {
+  "imagen-4-fast": "imagen-4.0-fast-generate-001",
+  "imagen-4": "imagen-4.0-generate-001",
+  "imagen-4-ultra": "imagen-4.0-ultra-generate-001",
+};
+
 export class ImagenProvider implements Provider {
   readonly name = "imagen";
-  readonly models = ["imagen-4"];
+  readonly models = ["imagen-4-fast", "imagen-4", "imagen-4-ultra"];
+  readonly defaultModel = "imagen-4";
   readonly maxPromptLength = 480;
   private readonly ai: GoogleGenAI;
 
@@ -34,11 +69,15 @@ export class ImagenProvider implements Provider {
   }
 
   async generate(request: GenerateRequest): Promise<GenerateResult> {
+    validateSize(request.size);
     const aspectRatio = toAspectRatio(request.size.width, request.size.height);
+
+    const requestModel = request.model ?? this.defaultModel;
+    const apiModel = MODEL_MAP[requestModel] ?? requestModel;
 
     try {
       const response = await this.ai.models.generateImages({
-        model: "imagen-4.0-generate-001",
+        model: apiModel,
         prompt: request.prompt,
         config: {
           numberOfImages: request.count,
@@ -62,10 +101,17 @@ export class ImagenProvider implements Provider {
 
       const err = error as { status?: number; message?: string };
       if (err.status === 429) {
-        throw new RateLimitError(`${this.name}: rate limited`);
+        throw new RateLimitError(
+          `${this.name}: rate limited`,
+          "Wait a moment and retry, or check your Gemini API quota",
+        );
       }
       if (err.status === 401 || err.status === 403) {
-        throw new AuthError(`${this.name}: authentication failed`, err.status);
+        throw new AuthError(
+          `${this.name}: authentication failed`,
+          err.status,
+          "Verify GEMINI_API_KEY is valid: export GEMINI_API_KEY=...",
+        );
       }
       throw new ProviderError(
         `${this.name}: ${err.message ?? "Unknown error"}`,
@@ -77,7 +123,8 @@ export class ImagenProvider implements Provider {
 
 export default {
   name: "imagen",
-  models: ["imagen-4"],
+  models: ["imagen-4-fast", "imagen-4", "imagen-4-ultra"],
+  defaultModel: "imagen-4",
   envKey: "GEMINI_API_KEY",
   maxPromptLength: 480,
   factory: ({ apiKey }) => new ImagenProvider(apiKey),

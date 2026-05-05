@@ -1,6 +1,7 @@
 {
   "name": "imggenai",
   "version": "0.1.0",
+  "description": "Unified CLI for multi-provider AI image generation",
   "type": "module",
   "private": true,
   "bin": {

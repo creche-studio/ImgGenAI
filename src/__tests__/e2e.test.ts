@@ -118,22 +118,94 @@ describe("E2E: CLI", () => {
     expect(r.stdout).toContain("Usage:");
   });
 
-  // 7. provider not specified → exit 3
-  it('"test" without -p → exit 3 (validation error)', async () => {
+  // 7. provider not specified → defaults to openai via env fallback → exit 4 (no API key)
+  // In non-TTY (child process), error is JSON on stdout
+  it('"test" without -p → defaults to openai, exit 4 (missing API key)', async () => {
     const r = await run(["test"]);
-    expect(r.code).toBe(3);
+    expect(r.code).toBe(4);
+    const json = JSON.parse(r.stdout.trim());
+    expect(json.success).toBe(false);
+    expect(json.message).toContain("API key not set");
   });
 
   // 8. unknown provider → exit 3
+  // In non-TTY (child process), error is JSON on stdout
   it('"test" -p unknown --dry-run → exit 3', async () => {
     const r = await run(["test", "-p", "unknown", "--dry-run"]);
     expect(r.code).toBe(3);
-    expect(r.stderr).toContain("Unknown provider");
+    const json = JSON.parse(r.stdout.trim());
+    expect(json.success).toBe(false);
+    expect(json.message).toContain("Unknown provider");
   });
 
   // 9. pipe mode
   it("pipe mode: stdin prompt with -p openai --dry-run → exit 0", async () => {
     const r = await run(["-p", "openai", "--dry-run"], "test prompt\n");
     expect(r.code).toBe(0);
+  });
+
+  // 10. --json + error → JSON error object on stdout
+  it('"test" -p unknown --json → exit 3, JSON error with success:false', async () => {
+    const r = await run(["test", "-p", "unknown", "--json"]);
+    expect(r.code).toBe(3);
+    const json = JSON.parse(r.stdout.trim());
+    expect(json).toEqual({
+      success: false,
+      error: "ValidationError",
+      message: expect.stringContaining("Unknown provider"),
+      hint: expect.any(String),
+    });
+  });
+
+  // 11. --json + config error → JSON error with hint
+  it('"test" --json → exit 4, JSON error for missing API key', async () => {
+    const r = await run(["test", "--json"]);
+    expect(r.code).toBe(4);
+    const json = JSON.parse(r.stdout.trim());
+    expect(json.success).toBe(false);
+    expect(json.error).toBe("ConfigError");
+    expect(json.message).toContain("API key not set");
+    expect(json.hint).toBeDefined();
+  });
+
+  // 12. --tier premium --dry-run --json → resolves premium models
+  it('"test" -p openai --tier premium --dry-run --json → premium model', async () => {
+    const r = await run(["test", "-p", "openai", "--tier", "premium", "--dry-run", "--json"]);
+    expect(r.code).toBe(0);
+    const json = JSON.parse(r.stdout.trim());
+    expect(json.results[0].model).toBe("gpt-image-1.5");
+  });
+
+  // 13. --tier economy --dry-run --json → resolves economy models
+  it('"test" -p openai --tier economy --dry-run --json → economy model', async () => {
+    const r = await run(["test", "-p", "openai", "--tier", "economy", "--dry-run", "--json"]);
+    expect(r.code).toBe(0);
+    const json = JSON.parse(r.stdout.trim());
+    expect(json.results[0].model).toBe("gpt-image-1-mini");
+  });
+
+  // 14. --tier + --model → error
+  it('"test" -p openai --tier premium --model gpt-image-1 → exit 3', async () => {
+    const r = await run(["test", "-p", "openai", "--tier", "premium", "--model", "gpt-image-1", "--dry-run"]);
+    expect(r.code).toBe(3);
+  });
+
+  // 15. dry-run --json → cost field present (totalCost, costSource)
+  it('"test" -p openai --tier standard --dry-run --json → has cost fields', async () => {
+    const r = await run(["test", "-p", "openai", "--tier", "standard", "--quality", "low", "--dry-run", "--json"]);
+    expect(r.code).toBe(0);
+    const json = JSON.parse(r.stdout.trim());
+    expect(json.results[0]).toHaveProperty("cost");
+    expect(json.results[0]).toHaveProperty("costSource");
+    // Default size 1024x1024, quality low, gpt-image-1 → $0.011
+    expect(json.results[0].cost).toBe(0.011);
+    expect(json.results[0].costSource).toBe("estimated");
+    expect(json.totalCost).toBe(0.011);
+  });
+
+  // 16. --quality on recraft only → error
+  it('"test" -p recraft --quality high → exit 3', async () => {
+    const r = await run(["test", "-p", "recraft", "--quality", "high", "--dry-run"]);
+    expect(r.code).toBe(3);
   });
 });

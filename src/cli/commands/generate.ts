@@ -7,17 +7,20 @@ import { resolveConfig } from "../../core/config.js";
 import type { FlagValues } from "../../core/config.js";
 import { createPipeline } from "../../core/index.js";
 import { AppError, ConfigError, ValidationError } from "../../errors/index.js";
-import type { PipelineInput, PipelineResult } from "../../types/index.js";
+import type { PipelineInput, PipelineResult, ProviderEntry, ProviderName } from "../../types/index.js";
+import { isProviderName } from "../../types/index.js";
+import { isTier, resolveTier, DEFAULT_TIER } from "../aliases.js";
+import type { Tier } from "../aliases.js";
 import {
   printDryRun,
   printGeneratingHeader,
   printResult,
 } from "../output/human.js";
-import { printJsonResult } from "../output/json.js";
+import { printJsonError, printJsonResult } from "../output/json.js";
 
 export interface GenerateFlags {
   provider: string[];
-  count: number;
+  count?: number;
   preset?: string;
   size?: string;
   output?: string;
@@ -25,25 +28,124 @@ export interface GenerateFlags {
   quiet?: boolean;
   debug?: boolean;
   dryRun?: boolean;
+  tier?: string;
+  model?: string;
+  quality?: string;
+  vector?: boolean;
+}
+
+function parseCount(raw: number | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  if (!Number.isInteger(raw) || raw < 1 || raw > 10) {
+    throw new ValidationError(
+      `Invalid --count: "${raw}"`,
+      "Must be an integer between 1 and 10",
+    );
+  }
+  return raw;
+}
+
+function validateProviderName(name: string): ProviderName {
+  if (!isProviderName(name)) {
+    throw new ValidationError(
+      `Unknown provider: "${name}"`,
+      "Allowed providers: openai, recraft, imagen",
+    );
+  }
+  return name;
 }
 
 function buildFlagValues(flags: GenerateFlags): FlagValues {
   return {
     provider: flags.provider,
-    count: flags.count,
+    ...(flags.count !== undefined ? { count: flags.count } : {}),
     preset: flags.preset,
     outputDir: flags.output,
     json: flags.json,
     quiet: flags.quiet,
     debug: flags.debug,
     dryRun: flags.dryRun,
+    model: flags.model,
+    quality: flags.quality,
+    tier: flags.tier,
+    vector: flags.vector,
   };
 }
+
+/**
+ * Resolve CLI flags into ProviderEntry[] with model/quality populated.
+ *
+ * Validation rules (§2-2):
+ * - --tier + --model → ValidationError
+ * - Unknown --tier value → ValidationError
+ * - --quality on quality-unsupported providers only → ValidationError
+ */
+export function resolveProviderEntries(
+  providerNames: ProviderName[],
+  flags: GenerateFlags,
+  providerQualities: Record<string, readonly string[] | undefined>,
+): ProviderEntry[] {
+  // --tier and --model are mutually exclusive
+  if (flags.tier !== undefined && flags.model !== undefined) {
+    throw new ValidationError(
+      "--tier and --model cannot be used together",
+      "Pick one: --tier <premium|standard|economy> or --model <internal-name>",
+    );
+  }
+
+  // Validate --tier value
+  if (flags.tier !== undefined && !isTier(flags.tier)) {
+    throw new ValidationError(
+      `Invalid --tier: "${flags.tier}"`,
+      "Allowed: premium, standard, economy",
+    );
+  }
+
+  const tier: Tier | undefined = flags.tier as Tier | undefined;
+  const vector = flags.vector ?? false;
+
+  const entries: ProviderEntry[] = providerNames.map((name) => {
+    const modelId = flags.model ?? resolveTier(name, tier ?? DEFAULT_TIER, vector);
+    const qualities = providerQualities[name];
+    const qualityVal = qualities ? flags.quality : undefined;
+    return {
+      name,
+      ...(modelId !== undefined ? { model: modelId } : {}),
+      ...(qualityVal !== undefined ? { quality: qualityVal } : {}),
+    };
+  });
+
+  // --quality specified but no provider supports it → ValidationError
+  if (flags.quality !== undefined) {
+    const anySupports = providerNames.some((name) => providerQualities[name] !== undefined);
+    if (!anySupports) {
+      throw new ValidationError(
+        "--quality is not supported by any of the specified providers",
+        "Only openai accepts --quality; drop the flag or add `-p openai`",
+      );
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Known provider quality support. Used by CLI layer to determine whether
+ * --quality should be forwarded to a given provider.
+ */
+const PROVIDER_QUALITIES: Record<string, readonly string[] | undefined> = {
+  openai: ["low", "medium", "high", "auto"],
+  recraft: undefined,
+  imagen: undefined,
+};
 
 async function executeForPrompt(
   prompt: string,
   flags: GenerateFlags,
 ): Promise<PipelineResult> {
+  // Validate --count flag early (CLI layer), before resolveConfig
+  parseCount(flags.count);
+
   const config = resolveConfig(buildFlagValues(flags));
   const pipeline = createPipeline();
 
@@ -57,12 +159,26 @@ async function executeForPrompt(
         "Use WxH format, e.g. --size 1024x1024",
       );
     }
-    sizeOption = { width: Number(match[1]), height: Number(match[2]) };
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    if (width <= 0 || height <= 0 || width > 8192 || height > 8192) {
+      throw new ValidationError(
+        `Invalid size value: "${flags.size}"`,
+        "Width and height must be between 1 and 8192",
+      );
+    }
+    sizeOption = { width, height };
   }
+
+  // Validate provider names early (CLI layer)
+  const providerNames = config.providers.map((name) => validateProviderName(name));
+
+  // Resolve provider entries with model/quality from --tier/--model/--quality/--vector
+  const providers = resolveProviderEntries(providerNames, flags, PROVIDER_QUALITIES);
 
   const input: PipelineInput = {
     prompt,
-    providers: config.providers.map((name) => ({ name })),
+    providers,
     preset: config.preset,
     outputDir: config.outputDir !== "./output" ? config.outputDir : undefined,
     options: {
@@ -74,13 +190,7 @@ async function executeForPrompt(
   if (config.dryRun) {
     const result = await pipeline.execute(input, { dryRun: true });
     if (!config.json) {
-      printDryRun(
-        prompt,
-        config.providers,
-        config.count,
-        config.preset,
-        result.outputDir,
-      );
+      printDryRun(prompt, providers, config.count, config.preset, result);
     } else {
       printJsonResult(result);
     }
@@ -88,12 +198,12 @@ async function executeForPrompt(
   }
 
   if (!config.quiet && !config.json) {
-    printGeneratingHeader(config.providers, config.count);
+    printGeneratingHeader(providers, config.count);
   }
 
   const result = await pipeline.execute(input);
 
-  if (config.json || !process.stderr.isTTY) {
+  if (config.json || !process.stdout.isTTY) {
     printJsonResult(result);
   } else {
     printResult(result);
@@ -145,42 +255,60 @@ export async function runGenerate(
     const result = await executeForPrompt(promptArg, flags);
     return computeExitCode([result]);
   } catch (error) {
+    const isJson = flags.json || !process.stdout.isTTY;
+
     if (error instanceof ValidationError) {
-      process.stderr.write(`\u2717 ${error.message}\n`);
-      if (error.hint) {
-        process.stderr.write(`  ${error.hint}\n`);
-      }
-      if (flags.debug && error.stack) {
-        process.stderr.write(`\n${error.stack}\n`);
+      if (isJson) {
+        printJsonError(error);
+      } else {
+        process.stderr.write(`\u2717 ${error.message}\n`);
+        if (error.hint) {
+          process.stderr.write(`  ${error.hint}\n`);
+        }
+        if (flags.debug && error.stack) {
+          process.stderr.write(`\n${error.stack}\n`);
+        }
       }
       return 3;
     }
     if (error instanceof ConfigError) {
-      process.stderr.write(`\u2717 ${error.name}: ${error.message}\n`);
-      if (error.hint) {
-        process.stderr.write(`\n  ${error.hint}\n`);
-      }
-      if (flags.debug && error.stack) {
-        process.stderr.write(`\n${error.stack}\n`);
+      if (isJson) {
+        printJsonError(error);
+      } else {
+        process.stderr.write(`\u2717 ${error.name}: ${error.message}\n`);
+        if (error.hint) {
+          process.stderr.write(`\n  ${error.hint}\n`);
+        }
+        if (flags.debug && error.stack) {
+          process.stderr.write(`\n${error.stack}\n`);
+        }
       }
       return 4;
     }
     if (error instanceof AppError) {
-      process.stderr.write(`\u2717 ${error.name}: ${error.message}\n`);
-      if (error.hint) {
-        process.stderr.write(`  ${error.hint}\n`);
-      }
-      if (flags.debug && error.stack) {
-        process.stderr.write(`\n${error.stack}\n`);
+      if (isJson) {
+        printJsonError(error);
+      } else {
+        process.stderr.write(`\u2717 ${error.name}: ${error.message}\n`);
+        if (error.hint) {
+          process.stderr.write(`  ${error.hint}\n`);
+        }
+        if (flags.debug && error.stack) {
+          process.stderr.write(`\n${error.stack}\n`);
+        }
       }
       return 2;
     }
 
     // Unexpected error
     const msg = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`\u2717 Unexpected error: ${msg}\n`);
-    if (flags.debug && error instanceof Error && error.stack) {
-      process.stderr.write(`\n${error.stack}\n`);
+    if (isJson) {
+      printJsonError(new AppError(msg));
+    } else {
+      process.stderr.write(`\u2717 Unexpected error: ${msg}\n`);
+      if (flags.debug && error instanceof Error && error.stack) {
+        process.stderr.write(`\n${error.stack}\n`);
+      }
     }
     return 2;
   }

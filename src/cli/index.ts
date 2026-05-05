@@ -49,7 +49,7 @@ const generateCmd = new Command("generate")
   .description("Generate images from a prompt (default command)")
   .argument("[prompt]", "Image generation prompt")
   .option("-p, --provider <name...>", "Provider (repeatable)", [])
-  .option("-c, --count <n>", "Images per provider", "1")
+  .option("-c, --count <n>", "Images per provider")
   .option("--preset <name>", "Preset name")
   .option("-s, --size <WxH>", "Image size (e.g. 1024x1024)")
   .option("-o, --output <dir>", "Output directory")
@@ -57,6 +57,10 @@ const generateCmd = new Command("generate")
   .option("-q, --quiet", "Suppress non-essential output")
   .option("-d, --debug", "Show debug information")
   .option("-n, --dry-run", "Show what would be done")
+  .option("--tier <tier>", "Tier alias: premium, standard, economy (default: standard)")
+  .option("--model <id>", "Provider-internal model id")
+  .option("--quality <q>", "Quality level (openai: low/medium/high/auto)")
+  .option("--vector", "Recraft vector tier alias")
   .action(
     async (prompt: string | undefined, cmdOpts: Record<string, unknown>) => {
       // Merge parent (program) options
@@ -77,9 +81,11 @@ const generateCmd = new Command("generate")
         process.exit(3);
       }
 
+      const rawCount = cmdOpts.count as string | undefined;
+
       const flags: GenerateFlags = {
         provider: normalizeProvider(cmdOpts.provider as string[] | string),
-        count: Number(cmdOpts.count) || 1,
+        count: rawCount !== undefined ? Number(rawCount) : undefined,
         preset: presetVal,
         size: sizeVal,
         output: cmdOpts.output as string | undefined,
@@ -87,6 +93,10 @@ const generateCmd = new Command("generate")
         quiet: (cmdOpts.quiet as boolean) ?? false,
         debug: (cmdOpts.debug as boolean) ?? false,
         dryRun: (cmdOpts.dryRun as boolean) ?? false,
+        tier: cmdOpts.tier as string | undefined,
+        model: cmdOpts.model as string | undefined,
+        quality: cmdOpts.quality as string | undefined,
+        vector: (cmdOpts.vector as boolean) ?? false,
       };
 
       const code = await runGenerate(prompt, flags);
