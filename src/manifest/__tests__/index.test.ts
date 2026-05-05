@@ -17,6 +17,7 @@ function makeEntry(overrides?: Partial<ManifestEntry>): ManifestEntry {
     params: { count: 1, size: { width: 1024, height: 1024 } },
     outputs: ["out/mock_0.png"],
     duration: 123,
+    cost: null,
     ...overrides,
   };
 }

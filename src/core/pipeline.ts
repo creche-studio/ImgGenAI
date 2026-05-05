@@ -91,6 +91,7 @@ export class Pipeline {
           success: true,
           outputs: [],
           duration: 0,
+          cost: null,
         })),
       };
     }
@@ -144,6 +145,7 @@ export class Pipeline {
           params: { count, size },
           outputs,
           duration,
+          cost: null,
         };
         await this.manifestRecorder(manifestEntry, outputDir);
 
@@ -155,6 +157,7 @@ export class Pipeline {
           success: true,
           outputs,
           duration,
+          cost: null,
         } satisfies ProviderResult;
       }),
     );
@@ -172,6 +175,7 @@ export class Pipeline {
         outputs: [],
         duration: 0,
         error: s.reason instanceof Error ? s.reason.message : String(s.reason),
+        cost: null,
       };
     });
 
