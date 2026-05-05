@@ -181,6 +181,21 @@ With `--json`, the full result is written to stdout:
 }
 ```
 
+## Environment Variables
+
+Configuration follows the hierarchy: CLI flag > environment variable > default.
+
+| Variable | Description | Default |
+|:--|:--|:--|
+| `OPENAI_API_KEY` | OpenAI API key | — |
+| `RECRAFT_API_TOKEN` | Recraft API key | — |
+| `GEMINI_API_KEY` | Google Gemini (Imagen) API key | — |
+| `IMGGEN_PROVIDER` | Default provider(s), comma-separated | `openai` |
+| `IMGGEN_COUNT` | Default image count (1-10) | `1` |
+| `IMGGEN_OUTPUT_DIR` | Default output directory | `./output` |
+| `IMGGEN_TIER` | Default tier alias | `standard` |
+| `IMGGEN_QUALITY` | Default quality level (openai) | `auto` |
+
 ## Library API
 
 Use as a library in your own code:
@@ -191,12 +206,42 @@ import { createPipeline } from 'imggenai';
 const pipeline = createPipeline();
 const result = await pipeline.execute({
   prompt: 'blue gradient mountain',
-  providers: [{ name: 'openai' }],
+  providers: [{ name: 'openai', model: 'gpt-image-1.5', quality: 'high' }],
   options: { count: 3, size: { width: 1024, height: 1024 } },
 });
 
-console.log(result.results[0].outputs);
+console.log(result.results[0].outputs);   // file paths
+console.log(result.totalCost);            // USD or null
+console.log(result.balances);             // per-provider balance
 ```
+
+## Architecture
+
+```
+src/
+├── cli/              # CLI layer (commander, flags, output formatting)
+│   ├── commands/     # Subcommands (generate, providers)
+│   ├── output/       # Human/JSON output formatters
+│   └── aliases.ts    # Tier alias resolution
+├── core/             # Core layer (pipeline orchestration, config)
+│   ├── pipeline.ts   # Generate → cost → balance → manifest flow
+│   ├── config.ts     # Flag/env/default resolution
+│   └── output-writer.ts  # I/O interface (DI for testability)
+├── pricing/          # Cost calculation (static tables + dynamic token-based)
+├── providers/        # Provider implementations (OpenAI, Recraft, Imagen)
+├── presets/          # Size presets (icon, og-image)
+├── manifest/         # Generation history recorder
+├── errors/           # Typed errors with actionable hints
+└── types/            # Shared type definitions
+```
+
+Key design decisions:
+
+- **Type-safe providers**: `ProviderName` literal union — invalid provider names are caught at compile time
+- **I/O separation**: `OutputWriter` interface injected into Pipeline — testable without filesystem
+- **Config hierarchy**: flag > env > default — consistent with 12 Factor CLI
+- **Hybrid pricing**: API response cost (actual) preferred, static table fallback (estimated)
+- **Dual output**: TTY gets human-readable stderr; pipes/`--json` get structured JSON on stdout
 
 ## Development
 
