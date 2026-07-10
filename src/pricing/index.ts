@@ -9,7 +9,12 @@ export {
 } from "./openai-tokens.js";
 export type { OpenAITokenRate, OpenAIUsage } from "./openai-tokens.js";
 export { RECRAFT_PRICING } from "./recraft.js";
-export { IMAGEN_PRICING } from "./imagen.js";
+export {
+  GEMINI_PRICING,
+  calculateGeminiActualCost,
+  resolutionForSize,
+} from "./gemini.js";
+export type { GeminiUsage } from "./gemini.js";
 export { perImageCost } from "./registry.js";
 
 // ---------------------------------------------------------------------------

@@ -24,13 +24,17 @@ export type { Tier };
 /**
  * Tier alias table. Maps provider name × tier to the model id that will be
  * passed to the API. Derived from the catalog's tier-mapped entries.
+ *
+ * A provider may map only some tiers (openai's single-model lineup maps
+ * "standard" only) — unmapped tiers resolve to undefined and the pipeline
+ * falls back to the provider's default model.
  */
 export const TIER_ALIASES: Record<
   string,
-  Record<Tier, string>
+  Partial<Record<Tier, string>>
 > = Object.fromEntries(
   [...new Set(MODEL_CATALOG.filter((m) => m.tier).map((m) => m.provider))].map(
-    (provider) => [provider, tierAliasesFor(provider) as Record<Tier, string>],
+    (provider) => [provider, tierAliasesFor(provider)],
   ),
 );
 
@@ -38,15 +42,13 @@ export const TIER_ALIASES: Record<
  * Recraft vector tier aliases. When --vector is specified, Recraft resolves
  * to these model ids instead of the raster ones.
  */
-export const RECRAFT_VECTOR_ALIASES: Record<Tier, string> = tierAliasesFor(
-  "recraft",
-  true,
-) as Record<Tier, string>;
+export const RECRAFT_VECTOR_ALIASES: Partial<Record<Tier, string>> =
+  tierAliasesFor("recraft", true);
 
 /**
  * Resolve a tier alias to a provider-internal model id.
  *
- * @param provider - Provider name (e.g. "openai", "recraft", "imagen")
+ * @param provider - Provider name (e.g. "openai", "recraft", "gemini")
  * @param tier - Tier to resolve (default: "standard")
  * @param vector - If true, use Recraft's vector alias table
  * @returns The resolved model id, or undefined if the provider has no alias table

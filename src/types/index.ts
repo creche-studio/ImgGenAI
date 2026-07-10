@@ -41,11 +41,11 @@ export interface GenerateResult {
 /**
  * Known provider identifiers. Literal union for type-safe provider selection.
  */
-export type ProviderName = "openai" | "recraft" | "imagen";
+export type ProviderName = "openai" | "recraft" | "gemini";
 
 /** Type guard for ProviderName. */
 export function isProviderName(value: string): value is ProviderName {
-  return value === "openai" || value === "recraft" || value === "imagen";
+  return value === "openai" || value === "recraft" || value === "gemini";
 }
 
 /** Balance information for a provider's remaining credit. */

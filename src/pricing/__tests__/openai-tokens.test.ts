@@ -14,19 +14,17 @@ import type { OpenAIUsage } from "../openai-tokens.js";
 // ---------------------------------------------------------------------------
 
 describe("OPENAI_TOKEN_RATES_USD_PER_MILLION", () => {
-  it("has rates for gpt-image-1", () => {
-    const rate = OPENAI_TOKEN_RATES_USD_PER_MILLION["gpt-image-1"];
-    expect(rate).toEqual({ input_text: 5, input_image: 10, output: 40 });
+  it("has rates for gpt-image-2", () => {
+    const rate = OPENAI_TOKEN_RATES_USD_PER_MILLION["gpt-image-2"];
+    expect(rate).toEqual({ input_text: 5, input_image: 8, output: 30 });
   });
 
-  it("has rates for gpt-image-1-mini", () => {
-    const rate = OPENAI_TOKEN_RATES_USD_PER_MILLION["gpt-image-1-mini"];
-    expect(rate).toEqual({ input_text: 2, input_image: 2.5, output: 8 });
-  });
-
-  it("has rates for gpt-image-1.5", () => {
-    const rate = OPENAI_TOKEN_RATES_USD_PER_MILLION["gpt-image-1.5"];
-    expect(rate).toEqual({ input_text: 5, input_image: 10, output: 32 });
+  it("has no rates for shut-down gpt-image-1 models", () => {
+    expect(OPENAI_TOKEN_RATES_USD_PER_MILLION["gpt-image-1"]).toBeUndefined();
+    expect(
+      OPENAI_TOKEN_RATES_USD_PER_MILLION["gpt-image-1-mini"],
+    ).toBeUndefined();
+    expect(OPENAI_TOKEN_RATES_USD_PER_MILLION["gpt-image-1.5"]).toBeUndefined();
   });
 });
 
@@ -44,12 +42,12 @@ describe("calculateOpenAIActualCost – valid usage", () => {
         image_tokens: 300,
       },
     };
-    // (200 * 5 + 300 * 10 + 4000 * 40) / 1_000_000
-    // = (1000 + 3000 + 160000) / 1_000_000
-    // = 164000 / 1_000_000
-    // = 0.164
-    const cost = calculateOpenAIActualCost(usage, "gpt-image-1");
-    expect(cost).toBeCloseTo(0.164);
+    // (200 * 5 + 300 * 8 + 4000 * 30) / 1_000_000
+    // = (1000 + 2400 + 120000) / 1_000_000
+    // = 123400 / 1_000_000
+    // = 0.1234
+    const cost = calculateOpenAIActualCost(usage, "gpt-image-2");
+    expect(cost).toBeCloseTo(0.1234);
   });
 
   it("falls back to input_tokens as text when no details", () => {
@@ -57,46 +55,12 @@ describe("calculateOpenAIActualCost – valid usage", () => {
       input_tokens: 500,
       output_tokens: 2000,
     };
-    // (500 * 5 + 0 * 10 + 2000 * 40) / 1_000_000
-    // = (2500 + 0 + 80000) / 1_000_000
-    // = 82500 / 1_000_000
-    // = 0.0825
-    const cost = calculateOpenAIActualCost(usage, "gpt-image-1");
-    expect(cost).toBeCloseTo(0.0825);
-  });
-
-  it("calculates cost for gpt-image-1-mini", () => {
-    const usage: OpenAIUsage = {
-      input_tokens: 1000,
-      output_tokens: 10000,
-      input_tokens_details: {
-        text_tokens: 600,
-        image_tokens: 400,
-      },
-    };
-    // (600 * 2 + 400 * 2.5 + 10000 * 8) / 1_000_000
-    // = (1200 + 1000 + 80000) / 1_000_000
-    // = 82200 / 1_000_000
-    // = 0.0822
-    const cost = calculateOpenAIActualCost(usage, "gpt-image-1-mini");
-    expect(cost).toBeCloseTo(0.0822);
-  });
-
-  it("calculates cost for gpt-image-1.5", () => {
-    const usage: OpenAIUsage = {
-      input_tokens: 300,
-      output_tokens: 5000,
-      input_tokens_details: {
-        text_tokens: 100,
-        image_tokens: 200,
-      },
-    };
-    // (100 * 5 + 200 * 10 + 5000 * 32) / 1_000_000
-    // = (500 + 2000 + 160000) / 1_000_000
-    // = 162500 / 1_000_000
-    // = 0.1625
-    const cost = calculateOpenAIActualCost(usage, "gpt-image-1.5");
-    expect(cost).toBeCloseTo(0.1625);
+    // (500 * 5 + 0 * 8 + 2000 * 30) / 1_000_000
+    // = (2500 + 0 + 60000) / 1_000_000
+    // = 62500 / 1_000_000
+    // = 0.0625
+    const cost = calculateOpenAIActualCost(usage, "gpt-image-2");
+    expect(cost).toBeCloseTo(0.0625);
   });
 
   it("handles zero image tokens in details", () => {
@@ -108,9 +72,9 @@ describe("calculateOpenAIActualCost – valid usage", () => {
         image_tokens: 0,
       },
     };
-    // (100 * 5 + 0 * 10 + 1000 * 40) / 1_000_000 = 40500 / 1_000_000
-    const cost = calculateOpenAIActualCost(usage, "gpt-image-1");
-    expect(cost).toBeCloseTo(0.0405);
+    // (100 * 5 + 0 * 8 + 1000 * 30) / 1_000_000 = 30500 / 1_000_000
+    const cost = calculateOpenAIActualCost(usage, "gpt-image-2");
+    expect(cost).toBeCloseTo(0.0305);
   });
 });
 
@@ -120,7 +84,7 @@ describe("calculateOpenAIActualCost – valid usage", () => {
 
 describe("calculateOpenAIActualCost – null returns", () => {
   it("returns null when usage is undefined", () => {
-    expect(calculateOpenAIActualCost(undefined, "gpt-image-1")).toBeNull();
+    expect(calculateOpenAIActualCost(undefined, "gpt-image-2")).toBeNull();
   });
 
   it("returns null for unknown model", () => {
@@ -140,11 +104,11 @@ describe("calculateOpenAIActualCost – null returns", () => {
         image_tokens: 0,
       },
     };
-    expect(calculateOpenAIActualCost(usage, "gpt-image-1")).toBeNull();
+    expect(calculateOpenAIActualCost(usage, "gpt-image-2")).toBeNull();
   });
 
   it("returns null when usage has no token fields", () => {
     const usage: OpenAIUsage = {};
-    expect(calculateOpenAIActualCost(usage, "gpt-image-1")).toBeNull();
+    expect(calculateOpenAIActualCost(usage, "gpt-image-2")).toBeNull();
   });
 });

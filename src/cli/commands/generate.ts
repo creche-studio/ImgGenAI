@@ -55,7 +55,7 @@ function validateProviderName(name: string): ProviderName {
   if (!isProviderName(name)) {
     throw new ValidationError(
       `Unknown provider: "${name}"`,
-      "Allowed providers: openai, recraft, imagen",
+      "Allowed providers: openai, recraft, gemini",
     );
   }
   return name;

@@ -79,12 +79,12 @@ describe("E2E: CLI", () => {
   });
 
   // 3. providers subcommand
-  it("providers → exit 0, lists openai, recraft, imagen", async () => {
+  it("providers → exit 0, lists openai, recraft, gemini", async () => {
     const r = await run(["providers"]);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("openai");
     expect(r.stdout).toContain("recraft");
-    expect(r.stdout).toContain("imagen");
+    expect(r.stdout).toContain("gemini");
   });
 
   // 4. dry-run (no API key needed)
@@ -169,11 +169,11 @@ describe("E2E: CLI", () => {
   });
 
   // 12. --tier premium --dry-run --json → resolves premium models
-  it('"test" -p openai --tier premium --dry-run --json → premium model', async () => {
+  it('"test" -p gemini --tier premium --dry-run --json → premium model', async () => {
     const r = await run([
       "test",
       "-p",
-      "openai",
+      "gemini",
       "--tier",
       "premium",
       "--dry-run",
@@ -181,15 +181,15 @@ describe("E2E: CLI", () => {
     ]);
     expect(r.code).toBe(0);
     const json = JSON.parse(r.stdout.trim());
-    expect(json.results[0].model).toBe("gpt-image-1.5");
+    expect(json.results[0].model).toBe("gemini-3-pro-image");
   });
 
   // 13. --tier economy --dry-run --json → resolves economy models
-  it('"test" -p openai --tier economy --dry-run --json → economy model', async () => {
+  it('"test" -p gemini --tier economy --dry-run --json → economy model', async () => {
     const r = await run([
       "test",
       "-p",
-      "openai",
+      "gemini",
       "--tier",
       "economy",
       "--dry-run",
@@ -197,11 +197,11 @@ describe("E2E: CLI", () => {
     ]);
     expect(r.code).toBe(0);
     const json = JSON.parse(r.stdout.trim());
-    expect(json.results[0].model).toBe("gpt-image-1-mini");
+    expect(json.results[0].model).toBe("gemini-3.1-flash-lite-image");
   });
 
   // 14. --tier + --model → error
-  it('"test" -p openai --tier premium --model gpt-image-1 → exit 3', async () => {
+  it('"test" -p openai --tier premium --model gpt-image-2 → exit 3', async () => {
     const r = await run([
       "test",
       "-p",
@@ -209,7 +209,7 @@ describe("E2E: CLI", () => {
       "--tier",
       "premium",
       "--model",
-      "gpt-image-1",
+      "gpt-image-2",
       "--dry-run",
     ]);
     expect(r.code).toBe(3);
@@ -232,10 +232,10 @@ describe("E2E: CLI", () => {
     const json = JSON.parse(r.stdout.trim());
     expect(json.results[0]).toHaveProperty("cost");
     expect(json.results[0]).toHaveProperty("costSource");
-    // Default size 1024x1024, quality low, gpt-image-1 → $0.011
-    expect(json.results[0].cost).toBe(0.011);
+    // Default size 1024x1024, quality low, gpt-image-2 → $0.006
+    expect(json.results[0].cost).toBe(0.006);
     expect(json.results[0].costSource).toBe("estimated");
-    expect(json.totalCost).toBe(0.011);
+    expect(json.totalCost).toBe(0.006);
   });
 
   // 16. --quality on recraft only → error

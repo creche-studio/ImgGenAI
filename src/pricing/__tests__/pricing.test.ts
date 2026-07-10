@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
-import { IMAGEN_PRICING } from "../imagen.js";
+import { GEMINI_PRICING, resolutionForSize } from "../gemini.js";
 import { calculateCost, perImageCost } from "../index.js";
 import { OPENAI_PRICING } from "../openai.js";
 import { RECRAFT_PRICING } from "../recraft.js";
@@ -13,110 +13,77 @@ import { RECRAFT_PRICING } from "../recraft.js";
 // ---------------------------------------------------------------------------
 
 describe("perImageCost – OpenAI", () => {
-  it("returns correct cost for gpt-image-1 / 1024x1024 / low", () => {
+  it("returns correct cost for gpt-image-2 / 1024x1024 / low", () => {
     expect(
       perImageCost(
         "openai",
-        "gpt-image-1",
+        "gpt-image-2",
         { width: 1024, height: 1024 },
         "low",
       ),
-    ).toBe(0.011);
+    ).toBe(0.006);
   });
 
-  it("returns correct cost for gpt-image-1 / 1024x1024 / medium", () => {
+  it("returns correct cost for gpt-image-2 / 1024x1024 / medium", () => {
     expect(
       perImageCost(
         "openai",
-        "gpt-image-1",
+        "gpt-image-2",
         { width: 1024, height: 1024 },
         "medium",
       ),
-    ).toBe(0.042);
+    ).toBe(0.053);
   });
 
-  it("returns correct cost for gpt-image-1 / 1024x1024 / high", () => {
+  it("returns correct cost for gpt-image-2 / 1024x1024 / high", () => {
     expect(
       perImageCost(
         "openai",
-        "gpt-image-1",
+        "gpt-image-2",
         { width: 1024, height: 1024 },
         "high",
       ),
-    ).toBe(0.167);
+    ).toBe(0.211);
   });
 
-  it("returns correct cost for gpt-image-1 / 1024x1536 / high", () => {
+  it("returns correct cost for gpt-image-2 / 1024x1536 / high", () => {
     expect(
       perImageCost(
         "openai",
-        "gpt-image-1",
+        "gpt-image-2",
         { width: 1024, height: 1536 },
         "high",
       ),
-    ).toBe(0.25);
+    ).toBe(0.165);
   });
 
-  it("returns correct cost for gpt-image-1 / 1536x1024 / medium", () => {
+  it("returns correct cost for gpt-image-2 / 1536x1024 / medium", () => {
     expect(
       perImageCost(
         "openai",
-        "gpt-image-1",
+        "gpt-image-2",
         { width: 1536, height: 1024 },
         "medium",
       ),
-    ).toBe(0.063);
+    ).toBe(0.041);
   });
 
-  it("returns correct cost for gpt-image-1-mini / 1024x1024 / low", () => {
+  it("returns correct cost for gpt-image-2 / 1536x1024 / low", () => {
     expect(
       perImageCost(
         "openai",
-        "gpt-image-1-mini",
-        { width: 1024, height: 1024 },
+        "gpt-image-2",
+        { width: 1536, height: 1024 },
         "low",
       ),
     ).toBe(0.005);
-  });
-
-  it("returns correct cost for gpt-image-1-mini / 1024x1536 / high", () => {
-    expect(
-      perImageCost(
-        "openai",
-        "gpt-image-1-mini",
-        { width: 1024, height: 1536 },
-        "high",
-      ),
-    ).toBe(0.052);
-  });
-
-  it("returns correct cost for gpt-image-1.5 / 1024x1024 / high", () => {
-    expect(
-      perImageCost(
-        "openai",
-        "gpt-image-1.5",
-        { width: 1024, height: 1024 },
-        "high",
-      ),
-    ).toBe(0.13);
-  });
-
-  it("returns correct cost for gpt-image-1.5 / 1536x1024 / low", () => {
-    expect(
-      perImageCost(
-        "openai",
-        "gpt-image-1.5",
-        { width: 1536, height: 1024 },
-        "low",
-      ),
-    ).toBe(0.013);
   });
 
   it("returns null for quality 'auto' (not in static table)", () => {
     expect(
       perImageCost(
         "openai",
-        "gpt-image-1",
+        "gpt-image-2",
         { width: 1024, height: 1024 },
         "auto",
       ),
@@ -134,12 +101,12 @@ describe("perImageCost – OpenAI", () => {
     ).toBeNull();
   });
 
-  it("returns null for unknown size", () => {
+  it("returns null for sizes outside the static table", () => {
     expect(
       perImageCost(
         "openai",
-        "gpt-image-1",
-        { width: 512, height: 512 },
+        "gpt-image-2",
+        { width: 2048, height: 2048 },
         "high",
       ),
     ).toBeNull();
@@ -147,7 +114,7 @@ describe("perImageCost – OpenAI", () => {
 
   it("returns null when quality is omitted", () => {
     expect(
-      perImageCost("openai", "gpt-image-1", { width: 1024, height: 1024 }),
+      perImageCost("openai", "gpt-image-2", { width: 1024, height: 1024 }),
     ).toBeNull();
   });
 });
@@ -225,50 +192,107 @@ describe("perImageCost – Recraft", () => {
 });
 
 // ---------------------------------------------------------------------------
-// perImageCost – Imagen
+// perImageCost – Gemini
 // ---------------------------------------------------------------------------
 
-describe("perImageCost – Imagen", () => {
-  it("returns cost for imagen-4.0-fast-generate-001", () => {
+describe("perImageCost – Gemini", () => {
+  it("returns 1K cost for gemini-3.1-flash-image", () => {
     expect(
-      perImageCost("imagen", "imagen-4.0-fast-generate-001", {
+      perImageCost("gemini", "gemini-3.1-flash-image", {
         width: 1024,
         height: 1024,
       }),
-    ).toBe(0.02);
+    ).toBe(0.067);
   });
 
-  it("returns cost for imagen-4.0-generate-001", () => {
+  it("returns 2K cost for gemini-3.1-flash-image", () => {
     expect(
-      perImageCost("imagen", "imagen-4.0-generate-001", {
+      perImageCost("gemini", "gemini-3.1-flash-image", {
+        width: 2048,
+        height: 2048,
+      }),
+    ).toBe(0.101);
+  });
+
+  it("returns 4K cost for gemini-3.1-flash-image", () => {
+    expect(
+      perImageCost("gemini", "gemini-3.1-flash-image", {
+        width: 4096,
+        height: 4096,
+      }),
+    ).toBe(0.151);
+  });
+
+  it("returns 1K cost for gemini-3.1-flash-lite-image", () => {
+    expect(
+      perImageCost("gemini", "gemini-3.1-flash-lite-image", {
         width: 1024,
         height: 1024,
       }),
-    ).toBe(0.04);
+    ).toBe(0.0336);
   });
 
-  it("returns cost for imagen-4.0-ultra-generate-001", () => {
+  it("returns null for flash-lite above 1K (unsupported resolution)", () => {
     expect(
-      perImageCost("imagen", "imagen-4.0-ultra-generate-001", {
+      perImageCost("gemini", "gemini-3.1-flash-lite-image", {
+        width: 2048,
+        height: 2048,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns 1K/2K cost for gemini-3-pro-image (same price)", () => {
+    expect(
+      perImageCost("gemini", "gemini-3-pro-image", {
         width: 1024,
         height: 1024,
       }),
-    ).toBe(0.06);
+    ).toBe(0.134);
+    expect(
+      perImageCost("gemini", "gemini-3-pro-image", {
+        width: 2048,
+        height: 2048,
+      }),
+    ).toBe(0.134);
   });
 
-  it("ignores size (flat rate)", () => {
+  it("resolution class follows the longest edge", () => {
+    // 1280x720: longest edge 1280 → 2K class
     expect(
-      perImageCost("imagen", "imagen-4.0-generate-001", {
-        width: 1536,
-        height: 1024,
+      perImageCost("gemini", "gemini-3.1-flash-image", {
+        width: 1280,
+        height: 720,
       }),
-    ).toBe(0.04);
+    ).toBe(0.101);
   });
 
   it("returns null for unknown model", () => {
     expect(
-      perImageCost("imagen", "imagen-99", { width: 1024, height: 1024 }),
+      perImageCost("gemini", "gemini-99", { width: 1024, height: 1024 }),
     ).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolutionForSize
+// ---------------------------------------------------------------------------
+
+describe("resolutionForSize", () => {
+  it("maps by longest edge", () => {
+    expect(resolutionForSize({ width: 512, height: 512 })).toBe("1K");
+    expect(resolutionForSize({ width: 1024, height: 1024 })).toBe("1K");
+    expect(resolutionForSize({ width: 2048, height: 1024 })).toBe("2K");
+    expect(resolutionForSize({ width: 4096, height: 2048 })).toBe("4K");
+  });
+});
+
+describe("GEMINI_PRICING", () => {
+  it("is keyed by API model id", () => {
+    expect(Object.keys(GEMINI_PRICING).sort()).toEqual([
+      "gemini-3-pro-image",
+      "gemini-3.1-flash-image",
+      "gemini-3.1-flash-lite-image",
+    ]);
   });
 });
 
@@ -293,19 +317,19 @@ describe("calculateCost", () => {
     expect(
       calculateCost({
         provider: "openai",
-        model: "gpt-image-1",
+        model: "gpt-image-2",
         size: { width: 1024, height: 1024 },
         quality: "medium",
         count: 3,
       }),
-    ).toBeCloseTo(0.042 * 3);
+    ).toBeCloseTo(0.053 * 3);
   });
 
   it("returns null when per-image cost is unknown", () => {
     expect(
       calculateCost({
         provider: "openai",
-        model: "gpt-image-1",
+        model: "gpt-image-2",
         size: { width: 1024, height: 1024 },
         quality: "auto",
         count: 1,
@@ -324,15 +348,15 @@ describe("calculateCost", () => {
     ).toBe(0.25);
   });
 
-  it("handles count of 5 for Imagen", () => {
+  it("handles count of 5 for Gemini", () => {
     expect(
       calculateCost({
-        provider: "imagen",
-        model: "imagen-4.0-generate-001",
+        provider: "gemini",
+        model: "gemini-3.1-flash-image",
         size: { width: 1024, height: 1024 },
         count: 5,
       }),
-    ).toBeCloseTo(0.04 * 5);
+    ).toBeCloseTo(0.067 * 5);
   });
 
   it("returns null for unknown provider", () => {
@@ -352,12 +376,8 @@ describe("calculateCost", () => {
 // ---------------------------------------------------------------------------
 
 describe("pricing table completeness", () => {
-  it("OPENAI_PRICING has all 3 models", () => {
-    expect(Object.keys(OPENAI_PRICING)).toEqual([
-      "gpt-image-1",
-      "gpt-image-1-mini",
-      "gpt-image-1.5",
-    ]);
+  it("OPENAI_PRICING has the single gpt-image-2 model", () => {
+    expect(Object.keys(OPENAI_PRICING)).toEqual(["gpt-image-2"]);
   });
 
   it("OPENAI_PRICING has 3 sizes per model", () => {
@@ -382,7 +402,7 @@ describe("pricing table completeness", () => {
     expect(Object.keys(RECRAFT_PRICING)).toHaveLength(8);
   });
 
-  it("IMAGEN_PRICING has 3 entries", () => {
-    expect(Object.keys(IMAGEN_PRICING)).toHaveLength(3);
+  it("GEMINI_PRICING has 3 entries", () => {
+    expect(Object.keys(GEMINI_PRICING)).toHaveLength(3);
   });
 });

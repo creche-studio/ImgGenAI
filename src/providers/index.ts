@@ -5,7 +5,7 @@
 import type { ProviderDefinition } from "../types/index.js";
 import type { ProviderRegistry } from "./registry.js";
 
-import imagenDef from "./imagen.js";
+import geminiDef from "./gemini.js";
 import openaiDef from "./openai.js";
 import recraftDef from "./recraft.js";
 
@@ -16,7 +16,7 @@ export type { ProviderInfo } from "./registry.js";
 export const BUILTIN_PROVIDER_DEFS: readonly ProviderDefinition[] = [
   openaiDef,
   recraftDef,
-  imagenDef,
+  geminiDef,
 ];
 
 /** Register all built-in providers into the given registry. */

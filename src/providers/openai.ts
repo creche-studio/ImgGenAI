@@ -25,23 +25,33 @@ import type {
   UsageMetadata,
 } from "../types/index.js";
 
-const OPENAI_SUPPORTED_SIZES = [
-  { width: 1024, height: 1024 },
-  { width: 1536, height: 1024 },
-  { width: 1024, height: 1536 },
-] as const;
+// gpt-image-2 accepts arbitrary resolutions within these constraints
+// (source: OpenAI image generation guide, 2026-07).
+const MAX_EDGE = 3840;
+const EDGE_MULTIPLE = 16;
+const MAX_RATIO = 3;
+const MIN_PIXELS = 655_360;
+const MAX_PIXELS = 8_294_400;
+
+const SIZE_HINT =
+  "Both edges must be multiples of 16, longest edge ≤ 3840, edge ratio ≤ 3:1, total pixels between 655,360 and 8,294,400 (e.g. 1024x1024, 1536x1024, 2048x2048)";
 
 function validateSize(size: { width: number; height: number }): void {
-  const valid = OPENAI_SUPPORTED_SIZES.some(
-    (s) => s.width === size.width && s.height === size.height,
-  );
+  const { width, height } = size;
+  const longEdge = Math.max(width, height);
+  const shortEdge = Math.min(width, height);
+  const pixels = width * height;
+  const valid =
+    width % EDGE_MULTIPLE === 0 &&
+    height % EDGE_MULTIPLE === 0 &&
+    longEdge <= MAX_EDGE &&
+    longEdge / shortEdge <= MAX_RATIO &&
+    pixels >= MIN_PIXELS &&
+    pixels <= MAX_PIXELS;
   if (!valid) {
-    const allowed = OPENAI_SUPPORTED_SIZES.map(
-      (s) => `${s.width}x${s.height}`,
-    ).join(", ");
     throw new ValidationError(
-      `Unsupported size ${size.width}x${size.height} for openai`,
-      `Allowed sizes: ${allowed}`,
+      `Unsupported size ${width}x${height} for openai`,
+      SIZE_HINT,
     );
   }
 }
@@ -70,10 +80,11 @@ export class OpenAIProvider implements Provider {
         model,
         prompt: request.prompt,
         n: request.count,
-        size: `${request.size.width}x${request.size.height}` as
-          | "1024x1024"
-          | "1536x1024"
-          | "1024x1536",
+        // gpt-image-2 accepts arbitrary WxH strings; the SDK type still
+        // enumerates the classic sizes, so widen through the params type.
+        size: `${request.size.width}x${request.size.height}` as NonNullable<
+          OpenAI.Images.ImageGenerateParams["size"]
+        >,
         output_format: "png",
         quality: quality as "low" | "medium" | "high" | "auto",
       });

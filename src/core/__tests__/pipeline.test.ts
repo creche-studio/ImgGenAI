@@ -1135,11 +1135,11 @@ describe("Pipeline – model id resolution (catalog)", () => {
   it("resolves a catalog shortName to its apiId for provider, pricing, and result", async () => {
     let modelSeenByProvider: string | undefined;
     const def = makeDef({
-      name: "imagen",
-      models: ["imagen-4-fast", "imagen-4", "imagen-4-ultra"],
+      name: "gemini",
+      models: ["gemini-flash-lite", "gemini-flash", "gemini-pro"],
       factory: () => ({
-        name: "imagen",
-        models: ["imagen-4-fast", "imagen-4", "imagen-4-ultra"],
+        name: "gemini",
+        models: ["gemini-flash-lite", "gemini-flash", "gemini-pro"],
         maxPromptLength: 480,
         generate: async (req) => {
           modelSeenByProvider = req.model;
@@ -1174,24 +1174,24 @@ describe("Pipeline – model id resolution (catalog)", () => {
     const result = await pipeline.execute(
       {
         prompt: "shortname cost regression",
-        providers: [{ name: pn("imagen"), model: "imagen-4" }],
+        providers: [{ name: pn("gemini"), model: "gemini-flash" }],
         outputDir: TEST_OUTPUT_DIR,
       },
       {},
     );
 
     // Regression: pricing used to receive the pre-resolution shortName
-    // ("imagen-4"), which is not a pricing-table key → cost silently null.
-    expect(pricingQueries).toEqual(["imagen-4.0-generate-001"]);
-    expect(modelSeenByProvider).toBe("imagen-4.0-generate-001");
-    expect(result.results[0].model).toBe("imagen-4.0-generate-001");
+    // ("gemini-flash"), which is not a pricing-table key → cost silently null.
+    expect(pricingQueries).toEqual(["gemini-3.1-flash-image"]);
+    expect(modelSeenByProvider).toBe("gemini-3.1-flash-image");
+    expect(result.results[0].model).toBe("gemini-3.1-flash-image");
     expect(result.results[0].cost).toBe(0.04);
   });
 
   it("resolves shortName in dry-run cost estimation too", async () => {
     const def = makeDef({
-      name: "imagen",
-      models: ["imagen-4-fast", "imagen-4", "imagen-4-ultra"],
+      name: "gemini",
+      models: ["gemini-flash-lite", "gemini-flash", "gemini-pro"],
     });
     const providerRegistry = makeProviderRegistry(def);
     const presetRegistry = new PresetRegistry();
@@ -1213,14 +1213,14 @@ describe("Pipeline – model id resolution (catalog)", () => {
     const result = await pipeline.execute(
       {
         prompt: "dry-run shortname",
-        providers: [{ name: pn("imagen"), model: "imagen-4" }],
+        providers: [{ name: pn("gemini"), model: "gemini-flash" }],
         outputDir: TEST_OUTPUT_DIR,
       },
       { dryRun: true },
     );
 
-    expect(pricingQueries).toEqual(["imagen-4.0-generate-001"]);
-    expect(result.results[0].model).toBe("imagen-4.0-generate-001");
+    expect(pricingQueries).toEqual(["gemini-3.1-flash-image"]);
+    expect(result.results[0].model).toBe("gemini-3.1-flash-image");
     expect(result.results[0].cost).toBe(0.04);
   });
 

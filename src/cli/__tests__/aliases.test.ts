@@ -7,7 +7,6 @@ import {
   DEFAULT_TIER,
   RECRAFT_VECTOR_ALIASES,
   TIER_ALIASES,
-  type Tier,
   isTier,
   resolveTier,
 } from "../aliases.js";
@@ -15,18 +14,22 @@ import {
 describe("TIER_ALIASES", () => {
   it("has entries for all three providers", () => {
     expect(Object.keys(TIER_ALIASES).sort()).toEqual([
-      "imagen",
+      "gemini",
       "openai",
       "recraft",
     ]);
   });
 
-  it("each provider has premium, standard, economy", () => {
-    for (const provider of Object.keys(TIER_ALIASES)) {
+  it("gemini and recraft have premium, standard, economy", () => {
+    for (const provider of ["gemini", "recraft"]) {
       expect(TIER_ALIASES[provider]).toHaveProperty("premium");
       expect(TIER_ALIASES[provider]).toHaveProperty("standard");
       expect(TIER_ALIASES[provider]).toHaveProperty("economy");
     }
+  });
+
+  it("openai maps standard only (single-model lineup)", () => {
+    expect(Object.keys(TIER_ALIASES.openai)).toEqual(["standard"]);
   });
 });
 
@@ -51,16 +54,13 @@ describe("DEFAULT_TIER", () => {
 });
 
 describe("resolveTier", () => {
-  it("resolves openai standard to gpt-image-1", () => {
-    expect(resolveTier("openai", "standard")).toBe("gpt-image-1");
+  it("resolves openai standard to gpt-image-2", () => {
+    expect(resolveTier("openai", "standard")).toBe("gpt-image-2");
   });
 
-  it("resolves openai premium to gpt-image-1.5", () => {
-    expect(resolveTier("openai", "premium")).toBe("gpt-image-1.5");
-  });
-
-  it("resolves openai economy to gpt-image-1-mini", () => {
-    expect(resolveTier("openai", "economy")).toBe("gpt-image-1-mini");
+  it("returns undefined for openai premium/economy (falls back to default)", () => {
+    expect(resolveTier("openai", "premium")).toBeUndefined();
+    expect(resolveTier("openai", "economy")).toBeUndefined();
   });
 
   it("resolves recraft standard to recraftv4", () => {
@@ -75,26 +75,24 @@ describe("resolveTier", () => {
     expect(resolveTier("recraft", "economy")).toBe("recraftv2");
   });
 
-  it("resolves imagen standard to imagen-4.0-generate-001", () => {
-    expect(resolveTier("imagen", "standard")).toBe("imagen-4.0-generate-001");
+  it("resolves gemini standard to gemini-3.1-flash-image", () => {
+    expect(resolveTier("gemini", "standard")).toBe("gemini-3.1-flash-image");
   });
 
-  it("resolves imagen premium to imagen-4.0-ultra-generate-001", () => {
-    expect(resolveTier("imagen", "premium")).toBe(
-      "imagen-4.0-ultra-generate-001",
-    );
+  it("resolves gemini premium to gemini-3-pro-image", () => {
+    expect(resolveTier("gemini", "premium")).toBe("gemini-3-pro-image");
   });
 
-  it("resolves imagen economy to imagen-4.0-fast-generate-001", () => {
-    expect(resolveTier("imagen", "economy")).toBe(
-      "imagen-4.0-fast-generate-001",
+  it("resolves gemini economy to gemini-3.1-flash-lite-image", () => {
+    expect(resolveTier("gemini", "economy")).toBe(
+      "gemini-3.1-flash-lite-image",
     );
   });
 
   it("defaults tier to standard when omitted", () => {
-    expect(resolveTier("openai")).toBe("gpt-image-1");
+    expect(resolveTier("openai")).toBe("gpt-image-2");
     expect(resolveTier("recraft")).toBe("recraftv4");
-    expect(resolveTier("imagen")).toBe("imagen-4.0-generate-001");
+    expect(resolveTier("gemini")).toBe("gemini-3.1-flash-image");
   });
 
   it("returns undefined for unknown provider", () => {
@@ -116,9 +114,9 @@ describe("resolveTier", () => {
   });
 
   it("vector flag on non-recraft falls back to normal alias", () => {
-    expect(resolveTier("openai", "premium", true)).toBe("gpt-image-1.5");
-    expect(resolveTier("imagen", "standard", true)).toBe(
-      "imagen-4.0-generate-001",
+    expect(resolveTier("openai", "standard", true)).toBe("gpt-image-2");
+    expect(resolveTier("gemini", "standard", true)).toBe(
+      "gemini-3.1-flash-image",
     );
   });
 });

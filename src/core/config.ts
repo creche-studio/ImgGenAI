@@ -49,7 +49,7 @@ export function parseEnvProviders(raw: string | undefined): ProviderEntry[] {
     if (!isProviderName(name)) {
       throw new ConfigError(
         `Invalid provider in IMGGEN_PROVIDER: "${name}"`,
-        "Allowed: openai, recraft, imagen",
+        "Allowed: openai, recraft, gemini",
       );
     }
     return { name };
