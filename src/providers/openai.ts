@@ -4,6 +4,11 @@
 
 import OpenAI from "openai";
 import {
+  defaultModelFor,
+  modelNamesFor,
+  resolveModelId,
+} from "../catalog/index.js";
+import {
   AuthError,
   ProviderError,
   RateLimitError,
@@ -43,9 +48,9 @@ function validateSize(size: { width: number; height: number }): void {
 
 export class OpenAIProvider implements Provider {
   readonly name = "openai";
-  readonly models = ["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"];
+  readonly models = modelNamesFor("openai");
   readonly qualities = ["low", "medium", "high", "auto"] as const;
-  readonly defaultModel = "gpt-image-1";
+  readonly defaultModel = defaultModelFor("openai");
   readonly defaultQuality = "auto";
   readonly maxPromptLength = 32000;
   private readonly client: OpenAI;
@@ -57,7 +62,7 @@ export class OpenAIProvider implements Provider {
   async generate(request: GenerateRequest): Promise<GenerateResult> {
     validateSize(request.size);
 
-    const model = request.model ?? this.defaultModel;
+    const model = resolveModelId(this.name, request.model ?? this.defaultModel);
     const quality = request.quality ?? this.defaultQuality;
 
     try {
@@ -65,7 +70,10 @@ export class OpenAIProvider implements Provider {
         model,
         prompt: request.prompt,
         n: request.count,
-        size: `${request.size.width}x${request.size.height}` as "1024x1024" | "1536x1024" | "1024x1536",
+        size: `${request.size.width}x${request.size.height}` as
+          | "1024x1024"
+          | "1536x1024"
+          | "1024x1536",
         output_format: "png",
         quality: quality as "low" | "medium" | "high" | "auto",
       });
@@ -79,13 +87,12 @@ export class OpenAIProvider implements Provider {
         throw new ProviderError(`${this.name}: API returned 0 images`);
       }
 
-      const usage: UsageMetadata | undefined =
-        response.usage
-          ? {
-              inputTokens: response.usage.input_tokens,
-              outputTokens: response.usage.output_tokens,
-            }
-          : undefined;
+      const usage: UsageMetadata | undefined = response.usage
+        ? {
+            inputTokens: response.usage.input_tokens,
+            outputTokens: response.usage.output_tokens,
+          }
+        : undefined;
 
       const actualCost = calculateOpenAIActualCost(
         response.usage as OpenAIUsage | undefined,
@@ -120,9 +127,9 @@ export class OpenAIProvider implements Provider {
 
 export default {
   name: "openai",
-  models: ["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"],
+  models: modelNamesFor("openai"),
   qualities: ["low", "medium", "high", "auto"],
-  defaultModel: "gpt-image-1",
+  defaultModel: defaultModelFor("openai"),
   defaultQuality: "auto",
   envKey: "OPENAI_API_KEY",
   maxPromptLength: 32000,

@@ -4,6 +4,11 @@
 
 import { GoogleGenAI } from "@google/genai";
 import {
+  defaultModelFor,
+  modelNamesFor,
+  resolveModelId,
+} from "../catalog/index.js";
+import {
   AuthError,
   ProviderError,
   RateLimitError,
@@ -28,13 +33,7 @@ function toAspectRatio(width: number, height: number): string {
   return `${width / d}:${height / d}`;
 }
 
-const IMAGEN_SUPPORTED_RATIOS = [
-  "1:1",
-  "3:4",
-  "4:3",
-  "9:16",
-  "16:9",
-] as const;
+const IMAGEN_SUPPORTED_RATIOS = ["1:1", "3:4", "4:3", "9:16", "16:9"] as const;
 
 function validateSize(size: { width: number; height: number }): void {
   const ratio = toAspectRatio(size.width, size.height);
@@ -50,17 +49,10 @@ function validateSize(size: { width: number; height: number }): void {
   }
 }
 
-/** Map from CLI short names to API model ids. */
-const MODEL_MAP: Record<string, string> = {
-  "imagen-4-fast": "imagen-4.0-fast-generate-001",
-  "imagen-4": "imagen-4.0-generate-001",
-  "imagen-4-ultra": "imagen-4.0-ultra-generate-001",
-};
-
 export class ImagenProvider implements Provider {
   readonly name = "imagen";
-  readonly models = ["imagen-4-fast", "imagen-4", "imagen-4-ultra"];
-  readonly defaultModel = "imagen-4";
+  readonly models = modelNamesFor("imagen");
+  readonly defaultModel = defaultModelFor("imagen");
   readonly maxPromptLength = 480;
   private readonly ai: GoogleGenAI;
 
@@ -72,8 +64,10 @@ export class ImagenProvider implements Provider {
     validateSize(request.size);
     const aspectRatio = toAspectRatio(request.size.width, request.size.height);
 
-    const requestModel = request.model ?? this.defaultModel;
-    const apiModel = MODEL_MAP[requestModel] ?? requestModel;
+    const apiModel = resolveModelId(
+      this.name,
+      request.model ?? this.defaultModel,
+    );
 
     try {
       const response = await this.ai.models.generateImages({
@@ -123,8 +117,8 @@ export class ImagenProvider implements Provider {
 
 export default {
   name: "imagen",
-  models: ["imagen-4-fast", "imagen-4", "imagen-4-ultra"],
-  defaultModel: "imagen-4",
+  models: modelNamesFor("imagen"),
+  defaultModel: defaultModelFor("imagen"),
   envKey: "GEMINI_API_KEY",
   maxPromptLength: 480,
   factory: ({ apiKey }) => new ImagenProvider(apiKey),

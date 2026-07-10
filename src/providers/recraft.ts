@@ -3,6 +3,11 @@
 // ---------------------------------------------------------------------------
 
 import {
+  defaultModelFor,
+  modelNamesFor,
+  resolveModelId,
+} from "../catalog/index.js";
+import {
   AuthError,
   ProviderError,
   RateLimitError,
@@ -43,27 +48,10 @@ interface RecraftResponse {
   data: RecraftResponseItem[];
 }
 
-/** Map from CLI short names to API model ids. */
-const MODEL_MAP: Record<string, string> = {
-  "recraft-v4": "recraftv4",
-  "recraft-v4-pro": "recraftv4_pro",
-  "recraft-v3": "recraftv3",
-  "recraft-v2": "recraftv2",
-};
-
 export class RecraftProvider implements Provider {
   readonly name = "recraft";
-  readonly models = [
-    "recraft-v4",
-    "recraft-v4-pro",
-    "recraft-v3",
-    "recraft-v2",
-    "recraftv4_vector",
-    "recraftv4_pro_vector",
-    "recraftv3_vector",
-    "recraftv2_vector",
-  ];
-  readonly defaultModel = "recraft-v4";
+  readonly models = modelNamesFor("recraft");
+  readonly defaultModel = defaultModelFor("recraft");
   readonly maxPromptLength = 1000;
   private readonly apiKey: string;
 
@@ -74,8 +62,10 @@ export class RecraftProvider implements Provider {
   async generate(request: GenerateRequest): Promise<GenerateResult> {
     validateSize(request.size);
 
-    const requestModel = request.model ?? this.defaultModel;
-    const apiModel = MODEL_MAP[requestModel] ?? requestModel;
+    const apiModel = resolveModelId(
+      this.name,
+      request.model ?? this.defaultModel,
+    );
 
     const body = {
       model: apiModel,
@@ -145,7 +135,11 @@ export class RecraftProvider implements Provider {
       });
       if (!res.ok) return null;
       const json = (await res.json()) as { credits: number };
-      return { provider: "recraft", usd: json.credits / 1000, raw: json.credits };
+      return {
+        provider: "recraft",
+        usd: json.credits / 1000,
+        raw: json.credits,
+      };
     } catch {
       return null;
     }
@@ -154,17 +148,8 @@ export class RecraftProvider implements Provider {
 
 export default {
   name: "recraft",
-  models: [
-    "recraft-v4",
-    "recraft-v4-pro",
-    "recraft-v3",
-    "recraft-v2",
-    "recraftv4_vector",
-    "recraftv4_pro_vector",
-    "recraftv3_vector",
-    "recraftv2_vector",
-  ],
-  defaultModel: "recraft-v4",
+  models: modelNamesFor("recraft"),
+  defaultModel: defaultModelFor("recraft"),
   envKey: "RECRAFT_API_TOKEN",
   maxPromptLength: 1000,
   factory: ({ apiKey }) => new RecraftProvider(apiKey),
