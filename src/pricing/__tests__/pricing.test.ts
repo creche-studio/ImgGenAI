@@ -3,10 +3,10 @@
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
+import { IMAGEN_PRICING } from "../imagen.js";
 import { calculateCost, perImageCost } from "../index.js";
 import { OPENAI_PRICING } from "../openai.js";
 import { RECRAFT_PRICING } from "../recraft.js";
-import { IMAGEN_PRICING } from "../imagen.js";
 
 // ---------------------------------------------------------------------------
 // perImageCost – OpenAI
@@ -15,73 +15,133 @@ import { IMAGEN_PRICING } from "../imagen.js";
 describe("perImageCost – OpenAI", () => {
   it("returns correct cost for gpt-image-1 / 1024x1024 / low", () => {
     expect(
-      perImageCost("openai", "gpt-image-1", { width: 1024, height: 1024 }, "low"),
+      perImageCost(
+        "openai",
+        "gpt-image-1",
+        { width: 1024, height: 1024 },
+        "low",
+      ),
     ).toBe(0.011);
   });
 
   it("returns correct cost for gpt-image-1 / 1024x1024 / medium", () => {
     expect(
-      perImageCost("openai", "gpt-image-1", { width: 1024, height: 1024 }, "medium"),
+      perImageCost(
+        "openai",
+        "gpt-image-1",
+        { width: 1024, height: 1024 },
+        "medium",
+      ),
     ).toBe(0.042);
   });
 
   it("returns correct cost for gpt-image-1 / 1024x1024 / high", () => {
     expect(
-      perImageCost("openai", "gpt-image-1", { width: 1024, height: 1024 }, "high"),
+      perImageCost(
+        "openai",
+        "gpt-image-1",
+        { width: 1024, height: 1024 },
+        "high",
+      ),
     ).toBe(0.167);
   });
 
   it("returns correct cost for gpt-image-1 / 1024x1536 / high", () => {
     expect(
-      perImageCost("openai", "gpt-image-1", { width: 1024, height: 1536 }, "high"),
+      perImageCost(
+        "openai",
+        "gpt-image-1",
+        { width: 1024, height: 1536 },
+        "high",
+      ),
     ).toBe(0.25);
   });
 
   it("returns correct cost for gpt-image-1 / 1536x1024 / medium", () => {
     expect(
-      perImageCost("openai", "gpt-image-1", { width: 1536, height: 1024 }, "medium"),
+      perImageCost(
+        "openai",
+        "gpt-image-1",
+        { width: 1536, height: 1024 },
+        "medium",
+      ),
     ).toBe(0.063);
   });
 
   it("returns correct cost for gpt-image-1-mini / 1024x1024 / low", () => {
     expect(
-      perImageCost("openai", "gpt-image-1-mini", { width: 1024, height: 1024 }, "low"),
+      perImageCost(
+        "openai",
+        "gpt-image-1-mini",
+        { width: 1024, height: 1024 },
+        "low",
+      ),
     ).toBe(0.005);
   });
 
   it("returns correct cost for gpt-image-1-mini / 1024x1536 / high", () => {
     expect(
-      perImageCost("openai", "gpt-image-1-mini", { width: 1024, height: 1536 }, "high"),
+      perImageCost(
+        "openai",
+        "gpt-image-1-mini",
+        { width: 1024, height: 1536 },
+        "high",
+      ),
     ).toBe(0.052);
   });
 
   it("returns correct cost for gpt-image-1.5 / 1024x1024 / high", () => {
     expect(
-      perImageCost("openai", "gpt-image-1.5", { width: 1024, height: 1024 }, "high"),
+      perImageCost(
+        "openai",
+        "gpt-image-1.5",
+        { width: 1024, height: 1024 },
+        "high",
+      ),
     ).toBe(0.13);
   });
 
   it("returns correct cost for gpt-image-1.5 / 1536x1024 / low", () => {
     expect(
-      perImageCost("openai", "gpt-image-1.5", { width: 1536, height: 1024 }, "low"),
+      perImageCost(
+        "openai",
+        "gpt-image-1.5",
+        { width: 1536, height: 1024 },
+        "low",
+      ),
     ).toBe(0.013);
   });
 
   it("returns null for quality 'auto' (not in static table)", () => {
     expect(
-      perImageCost("openai", "gpt-image-1", { width: 1024, height: 1024 }, "auto"),
+      perImageCost(
+        "openai",
+        "gpt-image-1",
+        { width: 1024, height: 1024 },
+        "auto",
+      ),
     ).toBeNull();
   });
 
   it("returns null for unknown model", () => {
     expect(
-      perImageCost("openai", "gpt-image-99", { width: 1024, height: 1024 }, "high"),
+      perImageCost(
+        "openai",
+        "gpt-image-99",
+        { width: 1024, height: 1024 },
+        "high",
+      ),
     ).toBeNull();
   });
 
   it("returns null for unknown size", () => {
     expect(
-      perImageCost("openai", "gpt-image-1", { width: 512, height: 512 }, "high"),
+      perImageCost(
+        "openai",
+        "gpt-image-1",
+        { width: 512, height: 512 },
+        "high",
+      ),
     ).toBeNull();
   });
 
@@ -117,25 +177,37 @@ describe("perImageCost – Recraft", () => {
 
   it("returns cost for recraftv4_vector", () => {
     expect(
-      perImageCost("recraft", "recraftv4_vector", { width: 1024, height: 1024 }),
+      perImageCost("recraft", "recraftv4_vector", {
+        width: 1024,
+        height: 1024,
+      }),
     ).toBe(0.08);
   });
 
   it("returns cost for recraftv4_pro_vector", () => {
     expect(
-      perImageCost("recraft", "recraftv4_pro_vector", { width: 1024, height: 1024 }),
+      perImageCost("recraft", "recraftv4_pro_vector", {
+        width: 1024,
+        height: 1024,
+      }),
     ).toBe(0.3);
   });
 
   it("returns cost for recraftv3_vector", () => {
     expect(
-      perImageCost("recraft", "recraftv3_vector", { width: 1024, height: 1024 }),
+      perImageCost("recraft", "recraftv3_vector", {
+        width: 1024,
+        height: 1024,
+      }),
     ).toBe(0.08);
   });
 
   it("returns cost for recraftv2_vector", () => {
     expect(
-      perImageCost("recraft", "recraftv2_vector", { width: 1024, height: 1024 }),
+      perImageCost("recraft", "recraftv2_vector", {
+        width: 1024,
+        height: 1024,
+      }),
     ).toBe(0.044);
   });
 
@@ -159,25 +231,37 @@ describe("perImageCost – Recraft", () => {
 describe("perImageCost – Imagen", () => {
   it("returns cost for imagen-4.0-fast-generate-001", () => {
     expect(
-      perImageCost("imagen", "imagen-4.0-fast-generate-001", { width: 1024, height: 1024 }),
+      perImageCost("imagen", "imagen-4.0-fast-generate-001", {
+        width: 1024,
+        height: 1024,
+      }),
     ).toBe(0.02);
   });
 
   it("returns cost for imagen-4.0-generate-001", () => {
     expect(
-      perImageCost("imagen", "imagen-4.0-generate-001", { width: 1024, height: 1024 }),
+      perImageCost("imagen", "imagen-4.0-generate-001", {
+        width: 1024,
+        height: 1024,
+      }),
     ).toBe(0.04);
   });
 
   it("returns cost for imagen-4.0-ultra-generate-001", () => {
     expect(
-      perImageCost("imagen", "imagen-4.0-ultra-generate-001", { width: 1024, height: 1024 }),
+      perImageCost("imagen", "imagen-4.0-ultra-generate-001", {
+        width: 1024,
+        height: 1024,
+      }),
     ).toBe(0.06);
   });
 
   it("ignores size (flat rate)", () => {
     expect(
-      perImageCost("imagen", "imagen-4.0-generate-001", { width: 1536, height: 1024 }),
+      perImageCost("imagen", "imagen-4.0-generate-001", {
+        width: 1536,
+        height: 1024,
+      }),
     ).toBe(0.04);
   });
 

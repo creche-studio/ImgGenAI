@@ -111,7 +111,12 @@ describe("Integration: full pipeline", () => {
     };
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     const result = await pipeline.execute(
       {
@@ -169,7 +174,12 @@ describe("Integration: full pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     const result = await pipeline.execute(
       {
@@ -216,7 +226,12 @@ describe("Integration: full pipeline", () => {
     const mockRecord = vi.fn(async () => "manifest.json");
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     const result = await pipeline.execute(
       {
@@ -260,7 +275,12 @@ describe("Integration: full pipeline", () => {
 
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     await pipeline.execute(
       {
@@ -289,7 +309,12 @@ describe("Integration: full pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     const result = await pipeline.execute(
       {
@@ -314,7 +339,12 @@ describe("Integration: full pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     const result = await pipeline.execute(
       {
@@ -338,7 +368,12 @@ describe("Integration: full pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     const result = await pipeline.execute(
       {

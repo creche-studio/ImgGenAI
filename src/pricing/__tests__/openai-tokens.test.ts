@@ -4,8 +4,8 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  calculateOpenAIActualCost,
   OPENAI_TOKEN_RATES_USD_PER_MILLION,
+  calculateOpenAIActualCost,
 } from "../openai-tokens.js";
 import type { OpenAIUsage } from "../openai-tokens.js";
 

@@ -49,7 +49,11 @@ describe("OpenAIProvider", () => {
 
   it("has correct metadata", () => {
     expect(provider.name).toBe("openai");
-    expect(provider.models).toEqual(["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]);
+    expect(provider.models).toEqual([
+      "gpt-image-1",
+      "gpt-image-1-mini",
+      "gpt-image-1.5",
+    ]);
     expect(provider.qualities).toEqual(["low", "medium", "high", "auto"]);
     expect(provider.defaultModel).toBe("gpt-image-1");
     expect(provider.defaultQuality).toBe("auto");
@@ -60,7 +64,11 @@ describe("OpenAIProvider", () => {
 
   it("default export has correct definition", () => {
     expect(openaiDef.name).toBe("openai");
-    expect(openaiDef.models).toEqual(["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]);
+    expect(openaiDef.models).toEqual([
+      "gpt-image-1",
+      "gpt-image-1-mini",
+      "gpt-image-1.5",
+    ]);
     expect(openaiDef.qualities).toEqual(["low", "medium", "high", "auto"]);
     expect(openaiDef.defaultModel).toBe("gpt-image-1");
     expect(openaiDef.defaultQuality).toBe("auto");

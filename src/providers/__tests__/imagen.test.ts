@@ -49,7 +49,11 @@ describe("ImagenProvider", () => {
 
   it("has correct metadata", () => {
     expect(provider.name).toBe("imagen");
-    expect(provider.models).toEqual(["imagen-4-fast", "imagen-4", "imagen-4-ultra"]);
+    expect(provider.models).toEqual([
+      "imagen-4-fast",
+      "imagen-4",
+      "imagen-4-ultra",
+    ]);
     expect(provider.defaultModel).toBe("imagen-4");
     expect(provider.maxPromptLength).toBe(480);
   });
@@ -58,7 +62,11 @@ describe("ImagenProvider", () => {
 
   it("default export has correct definition", () => {
     expect(imagenDef.name).toBe("imagen");
-    expect(imagenDef.models).toEqual(["imagen-4-fast", "imagen-4", "imagen-4-ultra"]);
+    expect(imagenDef.models).toEqual([
+      "imagen-4-fast",
+      "imagen-4",
+      "imagen-4-ultra",
+    ]);
     expect(imagenDef.defaultModel).toBe("imagen-4");
     expect(imagenDef.envKey).toBe("GEMINI_API_KEY");
     expect(imagenDef.maxPromptLength).toBe(480);
@@ -120,7 +128,10 @@ describe("ImagenProvider", () => {
       generatedImages: [{ image: { imageBytes: "c3Vuc2V0" } }],
     });
 
-    await provider.generate({ ...REQUEST, model: "imagen-4.0-ultra-generate-001" });
+    await provider.generate({
+      ...REQUEST,
+      model: "imagen-4.0-ultra-generate-001",
+    });
 
     expect(mockGenerateImages).toHaveBeenCalledWith({
       model: "imagen-4.0-ultra-generate-001",
@@ -226,7 +237,10 @@ describe("ImagenProvider", () => {
     });
 
     // 1:1
-    await provider.generate({ ...REQUEST, size: { width: 1024, height: 1024 } });
+    await provider.generate({
+      ...REQUEST,
+      size: { width: 1024, height: 1024 },
+    });
     // 3:4
     await provider.generate({ ...REQUEST, size: { width: 768, height: 1024 } });
     // 4:3

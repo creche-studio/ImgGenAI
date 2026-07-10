@@ -3,7 +3,11 @@
 // ---------------------------------------------------------------------------
 
 import { ConfigError, ValidationError } from "../errors/index.js";
-import type { Provider, ProviderDefinition, ProviderName } from "../types/index.js";
+import type {
+  Provider,
+  ProviderDefinition,
+  ProviderName,
+} from "../types/index.js";
 
 /** Summary info returned by `list()`. */
 export interface ProviderInfo {

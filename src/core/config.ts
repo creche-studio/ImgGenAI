@@ -42,9 +42,7 @@ export interface ResolvedConfig {
  * Parse IMGGEN_PROVIDER env var: comma-separated provider names.
  * Returns default provider when env is unset.
  */
-export function parseEnvProviders(
-  raw: string | undefined,
-): ProviderEntry[] {
+export function parseEnvProviders(raw: string | undefined): ProviderEntry[] {
   if (!raw) return [{ name: "openai" as ProviderName }];
   return raw.split(",").map((s) => {
     const name = s.trim();
@@ -89,9 +87,7 @@ export function resolveConfig(
         ? flags.provider
         : parseEnvProviders(env.IMGGEN_PROVIDER).map((e) => e.name),
     count:
-      flags.count !== undefined
-        ? flags.count
-        : parseEnvCount(env.IMGGEN_COUNT),
+      flags.count !== undefined ? flags.count : parseEnvCount(env.IMGGEN_COUNT),
     preset: flags.preset,
     outputDir: flags.outputDir ?? env.IMGGEN_OUTPUT_DIR ?? "./output",
     json: flags.json ?? false,

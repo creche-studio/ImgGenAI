@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ConfigError, ValidationError } from "../../errors/index.js";
-import type { Provider, ProviderDefinition, ProviderName } from "../../types/index.js";
+import type {
+  Provider,
+  ProviderDefinition,
+  ProviderName,
+} from "../../types/index.js";
 import { ProviderRegistry } from "../registry.js";
 
 /** Cast a test provider name to ProviderName for type compatibility. */

@@ -4,7 +4,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PipelineResult, ProviderEntry } from "../../types/index.js";
-import { printDryRun, printGeneratingHeader, printResult } from "../output/human.js";
+import {
+  printDryRun,
+  printGeneratingHeader,
+  printResult,
+} from "../output/human.js";
 
 // Capture stderr/stdout writes
 let stderrOutput: string;
@@ -13,14 +17,18 @@ let stdoutOutput: string;
 beforeEach(() => {
   stderrOutput = "";
   stdoutOutput = "";
-  vi.spyOn(process.stderr, "write").mockImplementation((chunk: string | Uint8Array) => {
-    stderrOutput += String(chunk);
-    return true;
-  });
-  vi.spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array) => {
-    stdoutOutput += String(chunk);
-    return true;
-  });
+  vi.spyOn(process.stderr, "write").mockImplementation(
+    (chunk: string | Uint8Array) => {
+      stderrOutput += String(chunk);
+      return true;
+    },
+  );
+  vi.spyOn(process.stdout, "write").mockImplementation(
+    (chunk: string | Uint8Array) => {
+      stdoutOutput += String(chunk);
+      return true;
+    },
+  );
 });
 
 afterEach(() => {
@@ -206,8 +214,25 @@ describe("printDryRun", () => {
       success: true,
       outputDir: "./output",
       results: [
-        { provider: "openai", model: "gpt-image-1.5", quality: "high", success: true, outputs: [], duration: 0, cost: 0.13, costSource: "estimated" },
-        { provider: "recraft", model: "recraftv4_pro", success: true, outputs: [], duration: 0, cost: 0.25, costSource: "estimated" },
+        {
+          provider: "openai",
+          model: "gpt-image-1.5",
+          quality: "high",
+          success: true,
+          outputs: [],
+          duration: 0,
+          cost: 0.13,
+          costSource: "estimated",
+        },
+        {
+          provider: "recraft",
+          model: "recraftv4_pro",
+          success: true,
+          outputs: [],
+          duration: 0,
+          cost: 0.25,
+          costSource: "estimated",
+        },
       ],
       totalCost: 0.38,
     };
@@ -226,7 +251,14 @@ describe("printDryRun", () => {
       success: true,
       outputDir: "./output",
       results: [
-        { provider: "openai", model: "gpt-image-1", success: true, outputs: [], duration: 0, cost: null },
+        {
+          provider: "openai",
+          model: "gpt-image-1",
+          success: true,
+          outputs: [],
+          duration: 0,
+          cost: null,
+        },
       ],
       totalCost: null,
     };
@@ -235,7 +267,9 @@ describe("printDryRun", () => {
   });
 
   it("shows preset when provided", () => {
-    const providers: ProviderEntry[] = [{ name: "openai", model: "gpt-image-1" }];
+    const providers: ProviderEntry[] = [
+      { name: "openai", model: "gpt-image-1" },
+    ];
     const result: PipelineResult = {
       success: true,
       outputDir: "./output",

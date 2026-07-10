@@ -28,7 +28,10 @@ describe("resolveConfig", () => {
   // Defaults
   // -----------------------------------------------------------------------
   it("uses default values when flags and env are absent", () => {
-    const config = resolveConfig(baseFlags({ provider: [], count: undefined }), {});
+    const config = resolveConfig(
+      baseFlags({ provider: [], count: undefined }),
+      {},
+    );
 
     expect(config.providers).toEqual(["openai"]);
     expect(config.count).toBe(1);

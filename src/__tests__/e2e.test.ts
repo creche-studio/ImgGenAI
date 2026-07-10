@@ -170,7 +170,15 @@ describe("E2E: CLI", () => {
 
   // 12. --tier premium --dry-run --json → resolves premium models
   it('"test" -p openai --tier premium --dry-run --json → premium model', async () => {
-    const r = await run(["test", "-p", "openai", "--tier", "premium", "--dry-run", "--json"]);
+    const r = await run([
+      "test",
+      "-p",
+      "openai",
+      "--tier",
+      "premium",
+      "--dry-run",
+      "--json",
+    ]);
     expect(r.code).toBe(0);
     const json = JSON.parse(r.stdout.trim());
     expect(json.results[0].model).toBe("gpt-image-1.5");
@@ -178,7 +186,15 @@ describe("E2E: CLI", () => {
 
   // 13. --tier economy --dry-run --json → resolves economy models
   it('"test" -p openai --tier economy --dry-run --json → economy model', async () => {
-    const r = await run(["test", "-p", "openai", "--tier", "economy", "--dry-run", "--json"]);
+    const r = await run([
+      "test",
+      "-p",
+      "openai",
+      "--tier",
+      "economy",
+      "--dry-run",
+      "--json",
+    ]);
     expect(r.code).toBe(0);
     const json = JSON.parse(r.stdout.trim());
     expect(json.results[0].model).toBe("gpt-image-1-mini");
@@ -186,13 +202,32 @@ describe("E2E: CLI", () => {
 
   // 14. --tier + --model → error
   it('"test" -p openai --tier premium --model gpt-image-1 → exit 3', async () => {
-    const r = await run(["test", "-p", "openai", "--tier", "premium", "--model", "gpt-image-1", "--dry-run"]);
+    const r = await run([
+      "test",
+      "-p",
+      "openai",
+      "--tier",
+      "premium",
+      "--model",
+      "gpt-image-1",
+      "--dry-run",
+    ]);
     expect(r.code).toBe(3);
   });
 
   // 15. dry-run --json → cost field present (totalCost, costSource)
   it('"test" -p openai --tier standard --dry-run --json → has cost fields', async () => {
-    const r = await run(["test", "-p", "openai", "--tier", "standard", "--quality", "low", "--dry-run", "--json"]);
+    const r = await run([
+      "test",
+      "-p",
+      "openai",
+      "--tier",
+      "standard",
+      "--quality",
+      "low",
+      "--dry-run",
+      "--json",
+    ]);
     expect(r.code).toBe(0);
     const json = JSON.parse(r.stdout.trim());
     expect(json.results[0]).toHaveProperty("cost");
@@ -205,7 +240,14 @@ describe("E2E: CLI", () => {
 
   // 16. --quality on recraft only → error
   it('"test" -p recraft --quality high → exit 3', async () => {
-    const r = await run(["test", "-p", "recraft", "--quality", "high", "--dry-run"]);
+    const r = await run([
+      "test",
+      "-p",
+      "recraft",
+      "--quality",
+      "high",
+      "--dry-run",
+    ]);
     expect(r.code).toBe(3);
   });
 });

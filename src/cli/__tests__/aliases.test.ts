@@ -5,11 +5,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TIER,
-  isTier,
   RECRAFT_VECTOR_ALIASES,
-  resolveTier,
   TIER_ALIASES,
   type Tier,
+  isTier,
+  resolveTier,
 } from "../aliases.js";
 
 describe("TIER_ALIASES", () => {

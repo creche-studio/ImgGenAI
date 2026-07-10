@@ -2,9 +2,9 @@
 // Pricing Registry – per-image cost dispatcher – ImgGenAI
 // ---------------------------------------------------------------------------
 
+import { IMAGEN_PRICING } from "./imagen.js";
 import { OPENAI_PRICING } from "./openai.js";
 import { RECRAFT_PRICING } from "./recraft.js";
-import { IMAGEN_PRICING } from "./imagen.js";
 
 /**
  * Look up the static per-image cost for a single image generation.

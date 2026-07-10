@@ -23,18 +23,32 @@ const PROVIDER_QUALITIES: Record<string, readonly string[] | undefined> = {
 describe("resolveProviderEntries", () => {
   // 1. Default tier → standard model for each provider
   it("default (no flags) → standard tier model", () => {
-    const entries = resolveProviderEntries(["openai"], { ...BASE_FLAGS }, PROVIDER_QUALITIES);
+    const entries = resolveProviderEntries(
+      ["openai"],
+      { ...BASE_FLAGS },
+      PROVIDER_QUALITIES,
+    );
     expect(entries).toEqual([{ name: "openai", model: "gpt-image-1" }]);
   });
 
   it("default for recraft → recraftv4", () => {
-    const entries = resolveProviderEntries(["recraft"], { ...BASE_FLAGS }, PROVIDER_QUALITIES);
+    const entries = resolveProviderEntries(
+      ["recraft"],
+      { ...BASE_FLAGS },
+      PROVIDER_QUALITIES,
+    );
     expect(entries).toEqual([{ name: "recraft", model: "recraftv4" }]);
   });
 
   it("default for imagen → imagen-4.0-generate-001", () => {
-    const entries = resolveProviderEntries(["imagen"], { ...BASE_FLAGS }, PROVIDER_QUALITIES);
-    expect(entries).toEqual([{ name: "imagen", model: "imagen-4.0-generate-001" }]);
+    const entries = resolveProviderEntries(
+      ["imagen"],
+      { ...BASE_FLAGS },
+      PROVIDER_QUALITIES,
+    );
+    expect(entries).toEqual([
+      { name: "imagen", model: "imagen-4.0-generate-001" },
+    ]);
   });
 
   // 2. --tier premium
@@ -165,6 +179,9 @@ describe("resolveProviderEntries", () => {
     expect(entries).toHaveLength(3);
     expect(entries[0]).toEqual({ name: "openai", model: "gpt-image-1" });
     expect(entries[1]).toEqual({ name: "recraft", model: "recraftv4" });
-    expect(entries[2]).toEqual({ name: "imagen", model: "imagen-4.0-generate-001" });
+    expect(entries[2]).toEqual({
+      name: "imagen",
+      model: "imagen-4.0-generate-001",
+    });
   });
 });
