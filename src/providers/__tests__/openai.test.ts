@@ -49,9 +49,9 @@ describe("OpenAIProvider", () => {
 
   it("has correct metadata", () => {
     expect(provider.name).toBe("openai");
-    expect(provider.models).toEqual(["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]);
+    expect(provider.models).toEqual(["gpt-image-2"]);
     expect(provider.qualities).toEqual(["low", "medium", "high", "auto"]);
-    expect(provider.defaultModel).toBe("gpt-image-1");
+    expect(provider.defaultModel).toBe("gpt-image-2");
     expect(provider.defaultQuality).toBe("auto");
     expect(provider.maxPromptLength).toBe(32000);
   });
@@ -60,9 +60,9 @@ describe("OpenAIProvider", () => {
 
   it("default export has correct definition", () => {
     expect(openaiDef.name).toBe("openai");
-    expect(openaiDef.models).toEqual(["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]);
+    expect(openaiDef.models).toEqual(["gpt-image-2"]);
     expect(openaiDef.qualities).toEqual(["low", "medium", "high", "auto"]);
-    expect(openaiDef.defaultModel).toBe("gpt-image-1");
+    expect(openaiDef.defaultModel).toBe("gpt-image-2");
     expect(openaiDef.defaultQuality).toBe("auto");
     expect(openaiDef.envKey).toBe("OPENAI_API_KEY");
     expect(openaiDef.maxPromptLength).toBe(32000);
@@ -121,9 +121,9 @@ describe("OpenAIProvider", () => {
 
     const result = await provider.generate(REQUEST);
 
-    // model defaults to gpt-image-1: text=5, image=10, output=40 USD/1M
-    // cost = (800*5 + 200*10 + 10000*40) / 1_000_000 = (4000+2000+400000)/1M = 0.406
-    expect(result.actualCost).toBeCloseTo(0.406, 6);
+    // model defaults to gpt-image-2: text=5, image=8, output=30 USD/1M
+    // cost = (800*5 + 200*8 + 10000*30) / 1_000_000 = (4000+1600+300000)/1M = 0.3056
+    expect(result.actualCost).toBeCloseTo(0.3056, 6);
   });
 
   it("returns null actualCost when usage is absent", async () => {
@@ -144,7 +144,7 @@ describe("OpenAIProvider", () => {
     await provider.generate(REQUEST);
 
     expect(mockGenerate).toHaveBeenCalledWith({
-      model: "gpt-image-1",
+      model: "gpt-image-2",
       prompt: "a cat",
       n: 1,
       size: "1024x1024",
@@ -160,12 +160,12 @@ describe("OpenAIProvider", () => {
 
     await provider.generate({
       ...REQUEST,
-      model: "gpt-image-1.5",
+      model: "gpt-image-2",
       quality: "high",
     });
 
     expect(mockGenerate).toHaveBeenCalledWith({
-      model: "gpt-image-1.5",
+      model: "gpt-image-2",
       prompt: "a cat",
       n: 1,
       size: "1024x1024",
@@ -224,9 +224,10 @@ describe("OpenAIProvider", () => {
     await expect(provider.generate(REQUEST)).rejects.toThrow(ProviderError);
   });
 
-  // --- size validation -----------------------------------------------------
+  // --- size validation (gpt-image-2 constraints) ----------------------------
 
-  it("throws ValidationError for unsupported size", async () => {
+  it("throws ValidationError below the minimum pixel count", async () => {
+    // 512x512 = 262,144 px < 655,360 minimum
     const badRequest: GenerateRequest = {
       ...REQUEST,
       size: { width: 512, height: 512 },
@@ -240,7 +241,40 @@ describe("OpenAIProvider", () => {
     );
   });
 
-  it("accepts all supported sizes", async () => {
+  it("throws ValidationError when an edge is not a multiple of 16", async () => {
+    const badRequest: GenerateRequest = {
+      ...REQUEST,
+      size: { width: 1200, height: 630 },
+    };
+
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      ValidationError,
+    );
+  });
+
+  it("throws ValidationError when the edge ratio exceeds 3:1", async () => {
+    const badRequest: GenerateRequest = {
+      ...REQUEST,
+      size: { width: 3840, height: 1024 },
+    };
+
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      ValidationError,
+    );
+  });
+
+  it("throws ValidationError above the maximum edge / pixel count", async () => {
+    const badRequest: GenerateRequest = {
+      ...REQUEST,
+      size: { width: 4096, height: 4096 },
+    };
+
+    await expect(provider.generate(badRequest)).rejects.toThrow(
+      ValidationError,
+    );
+  });
+
+  it("accepts classic and arbitrary valid sizes", async () => {
     mockGenerate.mockResolvedValue({
       data: [{ b64_json: "aGVsbG8=" }],
     });
@@ -249,6 +283,8 @@ describe("OpenAIProvider", () => {
       { width: 1024, height: 1024 },
       { width: 1536, height: 1024 },
       { width: 1024, height: 1536 },
+      { width: 2048, height: 2048 },
+      { width: 3840, height: 2160 },
     ]) {
       const result = await provider.generate({ ...REQUEST, size });
       expect(result.images).toHaveLength(1);

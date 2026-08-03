@@ -4,6 +4,11 @@
 
 import OpenAI from "openai";
 import {
+  defaultModelFor,
+  modelNamesFor,
+  resolveModelId,
+} from "../catalog/index.js";
+import {
   AuthError,
   ProviderError,
   RateLimitError,
@@ -20,32 +25,42 @@ import type {
   UsageMetadata,
 } from "../types/index.js";
 
-const OPENAI_SUPPORTED_SIZES = [
-  { width: 1024, height: 1024 },
-  { width: 1536, height: 1024 },
-  { width: 1024, height: 1536 },
-] as const;
+// gpt-image-2 accepts arbitrary resolutions within these constraints
+// (source: OpenAI image generation guide, 2026-07).
+const MAX_EDGE = 3840;
+const EDGE_MULTIPLE = 16;
+const MAX_RATIO = 3;
+const MIN_PIXELS = 655_360;
+const MAX_PIXELS = 8_294_400;
+
+const SIZE_HINT =
+  "Both edges must be multiples of 16, longest edge ≤ 3840, edge ratio ≤ 3:1, total pixels between 655,360 and 8,294,400 (e.g. 1024x1024, 1536x1024, 2048x2048)";
 
 function validateSize(size: { width: number; height: number }): void {
-  const valid = OPENAI_SUPPORTED_SIZES.some(
-    (s) => s.width === size.width && s.height === size.height,
-  );
+  const { width, height } = size;
+  const longEdge = Math.max(width, height);
+  const shortEdge = Math.min(width, height);
+  const pixels = width * height;
+  const valid =
+    width % EDGE_MULTIPLE === 0 &&
+    height % EDGE_MULTIPLE === 0 &&
+    longEdge <= MAX_EDGE &&
+    longEdge / shortEdge <= MAX_RATIO &&
+    pixels >= MIN_PIXELS &&
+    pixels <= MAX_PIXELS;
   if (!valid) {
-    const allowed = OPENAI_SUPPORTED_SIZES.map(
-      (s) => `${s.width}x${s.height}`,
-    ).join(", ");
     throw new ValidationError(
-      `Unsupported size ${size.width}x${size.height} for openai`,
-      `Allowed sizes: ${allowed}`,
+      `Unsupported size ${width}x${height} for openai`,
+      SIZE_HINT,
     );
   }
 }
 
 export class OpenAIProvider implements Provider {
   readonly name = "openai";
-  readonly models = ["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"];
+  readonly models = modelNamesFor("openai");
   readonly qualities = ["low", "medium", "high", "auto"] as const;
-  readonly defaultModel = "gpt-image-1";
+  readonly defaultModel = defaultModelFor("openai");
   readonly defaultQuality = "auto";
   readonly maxPromptLength = 32000;
   private readonly client: OpenAI;
@@ -57,7 +72,7 @@ export class OpenAIProvider implements Provider {
   async generate(request: GenerateRequest): Promise<GenerateResult> {
     validateSize(request.size);
 
-    const model = request.model ?? this.defaultModel;
+    const model = resolveModelId(this.name, request.model ?? this.defaultModel);
     const quality = request.quality ?? this.defaultQuality;
 
     try {
@@ -65,7 +80,11 @@ export class OpenAIProvider implements Provider {
         model,
         prompt: request.prompt,
         n: request.count,
-        size: `${request.size.width}x${request.size.height}` as "1024x1024" | "1536x1024" | "1024x1536",
+        // gpt-image-2 accepts arbitrary WxH strings; the SDK type still
+        // enumerates the classic sizes, so widen through the params type.
+        size: `${request.size.width}x${request.size.height}` as NonNullable<
+          OpenAI.Images.ImageGenerateParams["size"]
+        >,
         output_format: "png",
         quality: quality as "low" | "medium" | "high" | "auto",
       });
@@ -79,13 +98,12 @@ export class OpenAIProvider implements Provider {
         throw new ProviderError(`${this.name}: API returned 0 images`);
       }
 
-      const usage: UsageMetadata | undefined =
-        response.usage
-          ? {
-              inputTokens: response.usage.input_tokens,
-              outputTokens: response.usage.output_tokens,
-            }
-          : undefined;
+      const usage: UsageMetadata | undefined = response.usage
+        ? {
+            inputTokens: response.usage.input_tokens,
+            outputTokens: response.usage.output_tokens,
+          }
+        : undefined;
 
       const actualCost = calculateOpenAIActualCost(
         response.usage as OpenAIUsage | undefined,
@@ -120,9 +138,9 @@ export class OpenAIProvider implements Provider {
 
 export default {
   name: "openai",
-  models: ["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"],
+  models: modelNamesFor("openai"),
   qualities: ["low", "medium", "high", "auto"],
-  defaultModel: "gpt-image-1",
+  defaultModel: defaultModelFor("openai"),
   defaultQuality: "auto",
   envKey: "OPENAI_API_KEY",
   maxPromptLength: 32000,

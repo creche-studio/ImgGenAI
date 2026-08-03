@@ -2,7 +2,11 @@
 // Human-friendly TTY Output – ImgGenAI
 // ---------------------------------------------------------------------------
 
-import type { PipelineResult, ProviderEntry, ProviderResult } from "../../types/index.js";
+import type {
+  PipelineResult,
+  ProviderEntry,
+  ProviderResult,
+} from "../../types/index.js";
 
 function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
@@ -24,9 +28,7 @@ export function printGeneratingHeader(
     const details: string[] = [];
     if (pe.model) details.push(pe.model);
     if (pe.quality) details.push(pe.quality);
-    return details.length > 0
-      ? `${pe.name} (${details.join(", ")})`
-      : pe.name;
+    return details.length > 0 ? `${pe.name} (${details.join(", ")})` : pe.name;
   });
   const suffix = count > 1 ? ` (${count} images each)` : "";
   process.stderr.write(`Generating with ${parts.join(", ")}${suffix}...\n\n`);
@@ -48,9 +50,7 @@ export function printDryRun(
     const details: string[] = [];
     if (pe.model) details.push(pe.model);
     if (pe.quality) details.push(pe.quality);
-    return details.length > 0
-      ? `${pe.name} (${details.join(", ")})`
-      : pe.name;
+    return details.length > 0 ? `${pe.name} (${details.join(", ")})` : pe.name;
   });
   process.stderr.write(`  Providers: ${providerDescs.join(", ")}\n`);
   process.stderr.write(`  Count:     ${count}\n`);
@@ -61,7 +61,9 @@ export function printDryRun(
 
   // Cost (estimated, dry-run)
   if (result.totalCost !== undefined && result.totalCost !== null) {
-    process.stderr.write(`  Cost:      ${formatCost(result.totalCost)} (estimated, no API calls made)\n`);
+    process.stderr.write(
+      `  Cost:      ${formatCost(result.totalCost)} (estimated, no API calls made)\n`,
+    );
   }
 }
 
@@ -95,7 +97,9 @@ export function printResult(result: PipelineResult): void {
 
   // Summary line
   const summaryParts: string[] = [];
-  summaryParts.push(`Total: ${totalImages} images, ${formatDuration(maxDuration)}`);
+  summaryParts.push(
+    `Total: ${totalImages} images, ${formatDuration(maxDuration)}`,
+  );
   process.stderr.write(`\n${summaryParts.join("")}\n`);
 
   // Cost line
@@ -129,7 +133,9 @@ function formatCostSummary(result: PipelineResult): string | null {
   let balanceStr = "";
   if (balances && balances.length > 0) {
     const parts = balances.map((b) => {
-      return b.usd !== null ? `${b.provider} ${formatCost(b.usd)}` : `${b.provider} N/A`;
+      return b.usd !== null
+        ? `${b.provider} ${formatCost(b.usd)}`
+        : `${b.provider} N/A`;
     });
     balanceStr = ` | Balance: ${parts.join(", ")}`;
   }

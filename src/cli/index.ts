@@ -57,7 +57,10 @@ const generateCmd = new Command("generate")
   .option("-q, --quiet", "Suppress non-essential output")
   .option("-d, --debug", "Show debug information")
   .option("-n, --dry-run", "Show what would be done")
-  .option("--tier <tier>", "Tier alias: premium, standard, economy (default: standard)")
+  .option(
+    "--tier <tier>",
+    "Tier alias: premium, standard, economy (default: standard)",
+  )
   .option("--model <id>", "Provider-internal model id")
   .option("--quality <q>", "Quality level (openai: low/medium/high/auto)")
   .option("--vector", "Recraft vector tier alias")

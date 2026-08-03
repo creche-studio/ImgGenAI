@@ -2,12 +2,11 @@
 // OpenAI Token-Based Pricing (Dynamic / Actual Cost) – ImgGenAI
 // ---------------------------------------------------------------------------
 
+import { modelsFor } from "../catalog/index.js";
+import type { TokenRates } from "../catalog/index.js";
+
 /** Per-model token rates in USD per 1 million tokens. */
-export interface OpenAITokenRate {
-  readonly input_text: number;
-  readonly input_image: number;
-  readonly output: number;
-}
+export type OpenAITokenRate = TokenRates;
 
 /** Token usage from an OpenAI image generation response. */
 export interface OpenAIUsage {
@@ -21,16 +20,16 @@ export interface OpenAIUsage {
 
 /**
  * Token rates per model, in USD per million tokens.
- * Source: OpenAI pricing page (as of 2026-05).
+ * Derived from the model catalog.
  */
 export const OPENAI_TOKEN_RATES_USD_PER_MILLION: Record<
   string,
   OpenAITokenRate
-> = {
-  "gpt-image-1": { input_text: 5, input_image: 10, output: 40 },
-  "gpt-image-1-mini": { input_text: 2, input_image: 2.5, output: 8 },
-  "gpt-image-1.5": { input_text: 5, input_image: 10, output: 32 },
-};
+> = Object.fromEntries(
+  modelsFor("openai")
+    .filter((m) => m.tokenRates !== undefined)
+    .map((m) => [m.apiId, m.tokenRates as OpenAITokenRate]),
+);
 
 /**
  * Calculate actual USD cost from an OpenAI image response's usage field.

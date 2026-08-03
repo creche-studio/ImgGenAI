@@ -31,7 +31,7 @@ Only the keys for providers you actually use are required.
 imggen "blue gradient mountain silhouette" -p openai
 
 # Compare across providers (parallel execution)
-imggen "blue gradient mountain" -p openai -p recraft -p imagen -c 3
+imggen "blue gradient mountain" -p openai -p recraft -p gemini -c 3
 
 # Specify image size directly
 imggen "app icon" -p openai --size 1024x1024
@@ -40,10 +40,10 @@ imggen "app icon" -p openai --size 1024x1024
 imggen "app icon" -p openai --preset icon
 
 # Select model tier (premium / standard / economy)
-imggen "mountain" -p openai --tier premium
+imggen "mountain" -p gemini --tier premium
 
 # Specify model directly
-imggen "mountain" -p openai --model gpt-image-1.5
+imggen "mountain" -p gemini --model gemini-pro
 
 # Set quality level (openai only)
 imggen "mountain" -p openai --quality high
@@ -68,20 +68,27 @@ imggen providers
 
 | Provider | Models | Quality | Balance | Env Variable |
 |:--|:--|:--|:--|:--|
-| `openai` | gpt-image-1 (default), gpt-image-1-mini, gpt-image-1.5 | low, medium, high, auto (default) | N/A | `OPENAI_API_KEY` |
+| `openai` | gpt-image-2 (default) | low, medium, high, auto (default) | N/A | `OPENAI_API_KEY` |
 | `recraft` | recraft-v4 (default), recraft-v4-pro, recraft-v3, recraft-v2, recraftv4_vector, recraftv4_pro_vector, recraftv3_vector, recraftv2_vector | — | USD (via API) | `RECRAFT_API_TOKEN` |
-| `imagen` | imagen-4-fast, imagen-4 (default), imagen-4-ultra | — | N/A | `GEMINI_API_KEY` |
+| `gemini` | gemini-flash-lite, gemini-flash (default), gemini-pro | — | N/A | `GEMINI_API_KEY` |
+
+Notes:
+
+- `openai` sizes: gpt-image-2 accepts arbitrary resolutions — both edges multiples of 16, longest edge ≤ 3840, edge ratio ≤ 3:1, total pixels 655,360–8,294,400.
+- `gemini` sizes: aspect ratio must be one of 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9. The longest edge picks the resolution class (≤1024 → 1K, ≤2048 → 2K, else 4K), which drives billing. `gemini-flash-lite` supports 1K only.
 
 ### Tier Aliases
 
 Use `--tier` to select a model by tier instead of specifying the model id directly.
 `--tier` and `--model` are mutually exclusive.
 
-| Tier | openai | recraft | imagen |
+| Tier | openai | recraft | gemini |
 |:--|:--|:--|:--|
-| `premium` | gpt-image-1.5 | recraftv4_pro | imagen-4.0-ultra-generate-001 |
-| `standard` (default) | gpt-image-1 | recraftv4 | imagen-4.0-generate-001 |
-| `economy` | gpt-image-1-mini | recraftv2 | imagen-4.0-fast-generate-001 |
+| `premium` | — (falls back to gpt-image-2) | recraftv4_pro | gemini-3-pro-image |
+| `standard` (default) | gpt-image-2 | recraftv4 | gemini-3.1-flash-image |
+| `economy` | — (falls back to gpt-image-2) | recraftv2 | gemini-3.1-flash-lite-image |
+
+openai has a single-model lineup, so its price/quality ladder is the `--quality` flag rather than the tier.
 
 When `--vector` is specified, Recraft resolves to vector models instead:
 
@@ -164,7 +171,7 @@ With `--json`, the full result is written to stdout:
   "results": [
     {
       "provider": "openai",
-      "model": "gpt-image-1",
+      "model": "gpt-image-2",
       "quality": "low",
       "success": true,
       "outputs": ["..."],
@@ -189,7 +196,7 @@ Configuration follows the hierarchy: CLI flag > environment variable > default.
 |:--|:--|:--|
 | `OPENAI_API_KEY` | OpenAI API key | — |
 | `RECRAFT_API_TOKEN` | Recraft API key | — |
-| `GEMINI_API_KEY` | Google Gemini (Imagen) API key | — |
+| `GEMINI_API_KEY` | Google Gemini API key | — |
 | `IMGGEN_PROVIDER` | Default provider(s), comma-separated | `openai` |
 | `IMGGEN_COUNT` | Default image count (1-10) | `1` |
 | `IMGGEN_OUTPUT_DIR` | Default output directory | `./output` |
@@ -206,7 +213,7 @@ import { createPipeline } from 'imggenai';
 const pipeline = createPipeline();
 const result = await pipeline.execute({
   prompt: 'blue gradient mountain',
-  providers: [{ name: 'openai', model: 'gpt-image-1.5', quality: 'high' }],
+  providers: [{ name: 'openai', model: 'gpt-image-2', quality: 'high' }],
   options: { count: 3, size: { width: 1024, height: 1024 } },
 });
 
@@ -219,16 +226,17 @@ console.log(result.balances);             // per-provider balance
 
 ```
 src/
+├── catalog/          # Model catalog — single source of truth for model ids, tiers, pricing
 ├── cli/              # CLI layer (commander, flags, output formatting)
 │   ├── commands/     # Subcommands (generate, providers)
 │   ├── output/       # Human/JSON output formatters
-│   └── aliases.ts    # Tier alias resolution
+│   └── aliases.ts    # Tier alias resolution (derived from the catalog)
 ├── core/             # Core layer (pipeline orchestration, config)
 │   ├── pipeline.ts   # Generate → cost → balance → manifest flow
 │   ├── config.ts     # Flag/env/default resolution
 │   └── output-writer.ts  # I/O interface (DI for testability)
 ├── pricing/          # Cost calculation (static tables + dynamic token-based)
-├── providers/        # Provider implementations (OpenAI, Recraft, Imagen)
+├── providers/        # Provider implementations (OpenAI, Recraft, Gemini)
 ├── presets/          # Size presets (icon, og-image)
 ├── manifest/         # Generation history recorder
 ├── errors/           # Typed errors with actionable hints
@@ -237,6 +245,7 @@ src/
 
 Key design decisions:
 
+- **Model catalog**: every model's identifiers, tier, and pricing live in one table (`src/catalog`) — a model generation change only touches that file
 - **Type-safe providers**: `ProviderName` literal union — invalid provider names are caught at compile time
 - **I/O separation**: `OutputWriter` interface injected into Pipeline — testable without filesystem
 - **Config hierarchy**: flag > env > default — consistent with 12 Factor CLI

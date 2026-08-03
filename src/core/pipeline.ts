@@ -2,6 +2,7 @@
 // Pipeline – ImgGenAI
 // ---------------------------------------------------------------------------
 
+import { resolveModelId } from "../catalog/index.js";
 import { AppError, ValidationError } from "../errors/index.js";
 import type { record as RecordFn } from "../manifest/index.js";
 import type { PresetRegistry } from "../presets/registry.js";
@@ -50,7 +51,11 @@ function resolveCost(
   actualCost: number | null | undefined,
   staticCost: number | null,
 ): { cost: number | null; costSource?: CostSource } {
-  if (typeof actualCost === "number" && Number.isFinite(actualCost) && actualCost > 0) {
+  if (
+    typeof actualCost === "number" &&
+    Number.isFinite(actualCost) &&
+    actualCost > 0
+  ) {
     return { cost: actualCost, costSource: "actual" };
   }
   if (staticCost === null) return { cost: null };
@@ -67,7 +72,9 @@ export class Pipeline {
     private readonly presetRegistry: PresetRegistry,
     private readonly manifestRecorder: typeof RecordFn,
     private readonly outputWriter: OutputWriter,
-    private readonly pricingCalculator: (query: CostQuery) => number | null = () => null,
+    private readonly pricingCalculator: (
+      query: CostQuery,
+    ) => number | null = () => null,
   ) {}
 
   async execute(
@@ -113,6 +120,7 @@ export class Pipeline {
         } catch {
           // API key not set – use entry values only (best-effort in dry-run)
         }
+        model = model ? resolveModelId(pe.name, model) : model;
 
         const staticCost = this.pricingCalculator({
           provider: pe.name,
@@ -161,7 +169,12 @@ export class Pipeline {
     // 5. Parallel execution
     const settled = await Promise.allSettled(
       resolvedProviders.map(async ({ entry, provider }) => {
-        const model = entry.model ?? provider.defaultModel ?? provider.models[0];
+        // Resolve to the API model id once; providers, pricing, and the
+        // manifest all see the same canonical id from here on.
+        const model = resolveModelId(
+          entry.name,
+          entry.model ?? provider.defaultModel ?? provider.models[0],
+        );
         const quality = entry.quality ?? provider.defaultQuality;
 
         const start = Date.now();
@@ -268,7 +281,7 @@ export class Pipeline {
   private computeTotalCost(results: ProviderResult[]): number | null {
     const costsWithValues = results.filter((r) => r.cost !== null);
     if (costsWithValues.length === 0) return null;
-    return costsWithValues.reduce((sum, r) => sum + r.cost!, 0);
+    return costsWithValues.reduce((sum, r) => sum + (r.cost ?? 0), 0);
   }
 
   private async resolveBalances(
@@ -280,9 +293,15 @@ export class Pipeline {
       .map(async ({ entry, provider }) => {
         if (!provider.getBalance) return { provider: entry.name, usd: null };
         try {
-          return await provider.getBalance() ?? { provider: entry.name, usd: null };
+          return (
+            (await provider.getBalance()) ?? { provider: entry.name, usd: null }
+          );
         } catch (e) {
-          return { provider: entry.name, usd: null, error: (e as Error).message };
+          return {
+            provider: entry.name,
+            usd: null,
+            error: (e as Error).message,
+          };
         }
       });
     return Promise.all(tasks);

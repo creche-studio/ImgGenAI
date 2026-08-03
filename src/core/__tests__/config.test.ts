@@ -28,7 +28,10 @@ describe("resolveConfig", () => {
   // Defaults
   // -----------------------------------------------------------------------
   it("uses default values when flags and env are absent", () => {
-    const config = resolveConfig(baseFlags({ provider: [], count: undefined }), {});
+    const config = resolveConfig(
+      baseFlags({ provider: [], count: undefined }),
+      {},
+    );
 
     expect(config.providers).toEqual(["openai"]);
     expect(config.count).toBe(1);
@@ -52,10 +55,10 @@ describe("resolveConfig", () => {
 
   it("falls back to IMGGEN_PROVIDER from env when no --provider flag", () => {
     const config = resolveConfig(baseFlags({ provider: [] }), {
-      IMGGEN_PROVIDER: "recraft,imagen",
+      IMGGEN_PROVIDER: "recraft,gemini",
     });
 
-    expect(config.providers).toEqual(["recraft", "imagen"]);
+    expect(config.providers).toEqual(["recraft", "gemini"]);
   });
 
   it("falls back to IMGGEN_COUNT from env when no --count flag", () => {
@@ -78,11 +81,11 @@ describe("resolveConfig", () => {
   });
 
   it("--provider flag overrides IMGGEN_PROVIDER env", () => {
-    const config = resolveConfig(baseFlags({ provider: ["imagen"] }), {
+    const config = resolveConfig(baseFlags({ provider: ["gemini"] }), {
       IMGGEN_PROVIDER: "recraft",
     });
 
-    expect(config.providers).toEqual(["imagen"]);
+    expect(config.providers).toEqual(["gemini"]);
   });
 
   it("--count flag overrides IMGGEN_COUNT env", () => {
@@ -143,10 +146,10 @@ describe("parseEnvProviders", () => {
   });
 
   it("parses comma-separated providers", () => {
-    expect(parseEnvProviders("openai,recraft,imagen")).toEqual([
+    expect(parseEnvProviders("openai,recraft,gemini")).toEqual([
       { name: "openai" },
       { name: "recraft" },
-      { name: "imagen" },
+      { name: "gemini" },
     ]);
   });
 

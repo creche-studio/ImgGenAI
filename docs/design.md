@@ -27,9 +27,9 @@ graph TB
     end
 
     subgraph "Providers (built-in)"
-        OpenAI["OpenAI<br/>gpt-image-1-mini<br/>gpt-image-1.5"]
+        OpenAI["OpenAI<br/>gpt-image-2"]
         Recraft["Recraft<br/>recraft-v4"]
-        Imagen["Imagen<br/>imagen-4"]
+        Gemini["Gemini<br/>gemini-3.1-flash-image"]
         Stability["Stability<br/>(future)"]
     end
 
@@ -47,7 +47,7 @@ graph TB
     Pipeline --> Manifest
     ProviderRegistry --> OpenAI
     ProviderRegistry --> Recraft
-    ProviderRegistry --> Imagen
+    ProviderRegistry --> Gemini
     ProviderRegistry --> Stability
     Pipeline --> Files
     Manifest --> ManifestFile
@@ -176,7 +176,7 @@ Total: 5 images, 3.4s
   "results": [
     {
       "provider": "openai",
-      "model": "gpt-image-1-mini",
+      "model": "gpt-image-2",
       "success": true,
       "outputs": ["openai_001.png", "openai_002.png", "openai_003.png"],
       "duration": 2100
@@ -240,7 +240,7 @@ graph LR
     subgraph "Built-in"
         O["OpenAIProvider"]
         R["RecraftProvider"]
-        I["ImagenProvider"]
+        I["GeminiProvider"]
     end
 
     subgraph "User-defined (future)"
@@ -259,7 +259,7 @@ ai-design の教訓: switch 文によるハードコードを避け、レジス�
 // providers/openai.ts
 export default defineProvider({
   name: 'openai',
-  models: ['gpt-image-1-mini', 'gpt-image-1.5'],
+  models: ['gpt-image-2'],
   envKey: 'OPENAI_API_KEY',
   factory: (config) => new OpenAIProvider(config),
 });
@@ -328,7 +328,7 @@ graph TD
 |:--|:--|
 | OpenAI | `OPENAI_API_KEY` |
 | Recraft | `RECRAFT_API_TOKEN` |
-| Imagen | `GEMINI_API_KEY` |
+| Gemini | `GEMINI_API_KEY` |
 
 - フラグでは受け取らない (§6: ps/シェル履歴への漏洩防止)
 - `.env` はツール側で読まない（ユーザーが direnv 等で管理する領域）
@@ -403,7 +403,7 @@ imggen/
 │   │   ├── registry.ts        # Provider registry
 │   │   ├── openai.ts
 │   │   ├── recraft.ts
-│   │   └── imagen.ts
+│   │   └── gemini.ts
 │   │
 │   ├── presets/
 │   │   ├── index.ts            # Barrel export

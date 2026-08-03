@@ -132,7 +132,12 @@ describe("Pipeline", () => {
     };
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
       {
         prompt: "a cute cat",
@@ -165,7 +170,12 @@ describe("Pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
       {
         prompt: "a dog",
@@ -203,7 +213,12 @@ describe("Pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
       {
         prompt: "test",
@@ -231,7 +246,12 @@ describe("Pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     await expect(
       pipeline.execute({
@@ -302,7 +322,12 @@ describe("Pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
       {
         prompt: "dry test",
@@ -324,7 +349,12 @@ describe("Pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
       {
         prompt: "model test",
@@ -343,7 +373,12 @@ describe("Pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     await expect(
       pipeline.execute({
@@ -359,7 +394,12 @@ describe("Pipeline", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
 
     await expect(
       pipeline.execute({
@@ -382,7 +422,12 @@ describe("Pipeline – cost resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
           actualCost: 0.055,
         }),
       }),
@@ -393,9 +438,19 @@ describe("Pipeline – cost resolution", () => {
     const writer = new InMemoryOutputWriter();
     const mockPricing = () => 0.042; // static estimate should be ignored
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+      mockPricing,
+    );
     const result = await pipeline.execute(
-      { prompt: "cost test", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "cost test",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
@@ -410,7 +465,12 @@ describe("Pipeline – cost resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
           actualCost: null,
         }),
       }),
@@ -421,9 +481,19 @@ describe("Pipeline – cost resolution", () => {
     const writer = new InMemoryOutputWriter();
     const mockPricing = () => 0.042;
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+      mockPricing,
+    );
     const result = await pipeline.execute(
-      { prompt: "cost test", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "cost test",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
@@ -438,7 +508,12 @@ describe("Pipeline – cost resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
         }),
       }),
     });
@@ -448,9 +523,19 @@ describe("Pipeline – cost resolution", () => {
     const writer = new InMemoryOutputWriter();
     const mockPricing = () => null;
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+      mockPricing,
+    );
     const result = await pipeline.execute(
-      { prompt: "no cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "no cost",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
@@ -465,7 +550,12 @@ describe("Pipeline – cost resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
           actualCost: 0,
         }),
       }),
@@ -476,9 +566,19 @@ describe("Pipeline – cost resolution", () => {
     const writer = new InMemoryOutputWriter();
     const mockPricing = () => 0.03;
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+      mockPricing,
+    );
     const result = await pipeline.execute(
-      { prompt: "zero cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "zero cost",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
@@ -495,7 +595,12 @@ describe("Pipeline – cost resolution", () => {
         models: ["a-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
           actualCost: 0.05,
         }),
       }),
@@ -508,7 +613,12 @@ describe("Pipeline – cost resolution", () => {
         models: ["b-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
           actualCost: 0.03,
         }),
       }),
@@ -519,7 +629,12 @@ describe("Pipeline – cost resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
       {
         prompt: "total cost",
@@ -539,9 +654,19 @@ describe("Pipeline – cost resolution", () => {
     const writer = new InMemoryOutputWriter();
     const mockPricing = () => null;
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+      mockPricing,
+    );
     const result = await pipeline.execute(
-      { prompt: "null cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "null cost",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
@@ -564,7 +689,12 @@ describe("Pipeline – cost resolution", () => {
           capturedModel = req.model;
           capturedQuality = req.quality;
           return {
-            images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+            images: [
+              {
+                base64: Buffer.from("x").toString("base64"),
+                mimeType: "image/png",
+              },
+            ],
           };
         },
       }),
@@ -574,7 +704,12 @@ describe("Pipeline – cost resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     await pipeline.execute(
       {
         prompt: "propagation test",
@@ -604,7 +739,12 @@ describe("Pipeline – cost resolution", () => {
           capturedModel = req.model;
           capturedQuality = req.quality;
           return {
-            images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+            images: [
+              {
+                base64: Buffer.from("x").toString("base64"),
+                mimeType: "image/png",
+              },
+            ],
           };
         },
       }),
@@ -614,7 +754,12 @@ describe("Pipeline – cost resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     await pipeline.execute(
       {
         prompt: "default test",
@@ -636,7 +781,12 @@ describe("Pipeline – cost resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
           actualCost: 0.123,
         }),
       }),
@@ -649,9 +799,18 @@ describe("Pipeline – cost resolution", () => {
     };
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     await pipeline.execute(
-      { prompt: "manifest cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "manifest cost",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
@@ -676,9 +835,19 @@ describe("Pipeline – cost resolution", () => {
     const writer = new InMemoryOutputWriter();
     const mockPricing = () => 0.042;
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer, mockPricing);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+      mockPricing,
+    );
     const result = await pipeline.execute(
-      { prompt: "dry cost", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "dry cost",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       { dryRun: true },
     );
 
@@ -701,7 +870,12 @@ describe("Pipeline – balance resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
         }),
         getBalance: async (): Promise<BalanceInfo> => ({
           provider: "mock",
@@ -715,14 +889,27 @@ describe("Pipeline – balance resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
-      { prompt: "balance test", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "balance test",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
     expect(result.balances).toHaveLength(1);
-    expect(result.balances![0]).toEqual({ provider: "mock", usd: 4.21, raw: 4210 });
+    expect(result.balances?.[0]).toEqual({
+      provider: "mock",
+      usd: 4.21,
+      raw: 4210,
+    });
   });
 
   it("returns usd=null for providers without getBalance", async () => {
@@ -732,7 +919,12 @@ describe("Pipeline – balance resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
         }),
         // No getBalance method
       }),
@@ -742,14 +934,23 @@ describe("Pipeline – balance resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
-      { prompt: "no balance", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "no balance",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
     expect(result.balances).toHaveLength(1);
-    expect(result.balances![0]).toEqual({ provider: "mock", usd: null });
+    expect(result.balances?.[0]).toEqual({ provider: "mock", usd: null });
   });
 
   it("handles getBalance() throwing an error gracefully", async () => {
@@ -759,7 +960,12 @@ describe("Pipeline – balance resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
         }),
         getBalance: async (): Promise<BalanceInfo | null> => {
           throw new Error("network timeout");
@@ -771,16 +977,25 @@ describe("Pipeline – balance resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
-      { prompt: "error balance", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "error balance",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
     expect(result.balances).toHaveLength(1);
-    expect(result.balances![0].provider).toBe("mock");
-    expect(result.balances![0].usd).toBeNull();
-    expect(result.balances![0].error).toBe("network timeout");
+    expect(result.balances?.[0].provider).toBe("mock");
+    expect(result.balances?.[0].usd).toBeNull();
+    expect(result.balances?.[0].error).toBe("network timeout");
   });
 
   it("deduplicates balances when same provider appears multiple times", async () => {
@@ -791,7 +1006,12 @@ describe("Pipeline – balance resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
         }),
         getBalance: async (): Promise<BalanceInfo> => {
           balanceCalls++;
@@ -804,7 +1024,12 @@ describe("Pipeline – balance resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
       {
         prompt: "dedup balance",
@@ -826,7 +1051,12 @@ describe("Pipeline – balance resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
         }),
         getBalance: async (): Promise<BalanceInfo | null> => null,
       }),
@@ -836,14 +1066,23 @@ describe("Pipeline – balance resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
-      { prompt: "null balance", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "null balance",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       {},
     );
 
     expect(result.balances).toHaveLength(1);
-    expect(result.balances![0]).toEqual({ provider: "mock", usd: null });
+    expect(result.balances?.[0]).toEqual({ provider: "mock", usd: null });
   });
 
   it("dry-run does not resolve balances", async () => {
@@ -854,7 +1093,12 @@ describe("Pipeline – balance resolution", () => {
         models: ["mock-v1"],
         maxPromptLength: 1000,
         generate: async () => ({
-          images: [{ base64: Buffer.from("x").toString("base64"), mimeType: "image/png" }],
+          images: [
+            {
+              base64: Buffer.from("x").toString("base64"),
+              mimeType: "image/png",
+            },
+          ],
         }),
         getBalance: async (): Promise<BalanceInfo> => {
           balanceCalled = true;
@@ -867,13 +1111,141 @@ describe("Pipeline – balance resolution", () => {
     const mockRecord = async () => "manifest.json";
     const writer = new InMemoryOutputWriter();
 
-    const pipeline = new Pipeline(providerRegistry, presetRegistry, mockRecord, writer);
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
     const result = await pipeline.execute(
-      { prompt: "dry balance", providers: [{ name: pn("mock") }], outputDir: TEST_OUTPUT_DIR },
+      {
+        prompt: "dry balance",
+        providers: [{ name: pn("mock") }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
       { dryRun: true },
     );
 
     expect(balanceCalled).toBe(false);
     expect(result.balances).toBeUndefined();
+  });
+});
+
+describe("Pipeline – model id resolution (catalog)", () => {
+  it("resolves a catalog shortName to its apiId for provider, pricing, and result", async () => {
+    let modelSeenByProvider: string | undefined;
+    const def = makeDef({
+      name: "gemini",
+      models: ["gemini-flash-lite", "gemini-flash", "gemini-pro"],
+      factory: () => ({
+        name: "gemini",
+        models: ["gemini-flash-lite", "gemini-flash", "gemini-pro"],
+        maxPromptLength: 480,
+        generate: async (req) => {
+          modelSeenByProvider = req.model;
+          return {
+            images: [
+              {
+                base64: Buffer.from("x").toString("base64"),
+                mimeType: "image/png",
+              },
+            ],
+          };
+        },
+      }),
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+    const pricingQueries: string[] = [];
+    const mockPricing = (query: { model: string }) => {
+      pricingQueries.push(query.model);
+      return 0.04;
+    };
+
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+      mockPricing,
+    );
+    const result = await pipeline.execute(
+      {
+        prompt: "shortname cost regression",
+        providers: [{ name: pn("gemini"), model: "gemini-flash" }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
+      {},
+    );
+
+    // Regression: pricing used to receive the pre-resolution shortName
+    // ("gemini-flash"), which is not a pricing-table key → cost silently null.
+    expect(pricingQueries).toEqual(["gemini-3.1-flash-image"]);
+    expect(modelSeenByProvider).toBe("gemini-3.1-flash-image");
+    expect(result.results[0].model).toBe("gemini-3.1-flash-image");
+    expect(result.results[0].cost).toBe(0.04);
+  });
+
+  it("resolves shortName in dry-run cost estimation too", async () => {
+    const def = makeDef({
+      name: "gemini",
+      models: ["gemini-flash-lite", "gemini-flash", "gemini-pro"],
+    });
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+    const pricingQueries: string[] = [];
+    const mockPricing = (query: { model: string }) => {
+      pricingQueries.push(query.model);
+      return 0.04;
+    };
+
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+      mockPricing,
+    );
+    const result = await pipeline.execute(
+      {
+        prompt: "dry-run shortname",
+        providers: [{ name: pn("gemini"), model: "gemini-flash" }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
+      { dryRun: true },
+    );
+
+    expect(pricingQueries).toEqual(["gemini-3.1-flash-image"]);
+    expect(result.results[0].model).toBe("gemini-3.1-flash-image");
+    expect(result.results[0].cost).toBe(0.04);
+  });
+
+  it("passes non-catalog model names through unchanged", async () => {
+    const def = makeDef();
+    const providerRegistry = makeProviderRegistry(def);
+    const presetRegistry = new PresetRegistry();
+    const mockRecord = async () => "manifest.json";
+    const writer = new InMemoryOutputWriter();
+
+    const pipeline = new Pipeline(
+      providerRegistry,
+      presetRegistry,
+      mockRecord,
+      writer,
+    );
+    const result = await pipeline.execute(
+      {
+        prompt: "passthrough",
+        providers: [{ name: pn("mock"), model: "mock-v1" }],
+        outputDir: TEST_OUTPUT_DIR,
+      },
+      {},
+    );
+
+    expect(result.results[0].model).toBe("mock-v1");
   });
 });

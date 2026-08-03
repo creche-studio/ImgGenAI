@@ -4,7 +4,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PipelineResult, ProviderEntry } from "../../types/index.js";
-import { printDryRun, printGeneratingHeader, printResult } from "../output/human.js";
+import {
+  printDryRun,
+  printGeneratingHeader,
+  printResult,
+} from "../output/human.js";
 
 // Capture stderr/stdout writes
 let stderrOutput: string;
@@ -13,14 +17,18 @@ let stdoutOutput: string;
 beforeEach(() => {
   stderrOutput = "";
   stdoutOutput = "";
-  vi.spyOn(process.stderr, "write").mockImplementation((chunk: string | Uint8Array) => {
-    stderrOutput += String(chunk);
-    return true;
-  });
-  vi.spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array) => {
-    stdoutOutput += String(chunk);
-    return true;
-  });
+  vi.spyOn(process.stderr, "write").mockImplementation(
+    (chunk: string | Uint8Array) => {
+      stderrOutput += String(chunk);
+      return true;
+    },
+  );
+  vi.spyOn(process.stdout, "write").mockImplementation(
+    (chunk: string | Uint8Array) => {
+      stdoutOutput += String(chunk);
+      return true;
+    },
+  );
 });
 
 afterEach(() => {
@@ -30,18 +38,18 @@ afterEach(() => {
 describe("printGeneratingHeader", () => {
   it("includes model info", () => {
     const providers: ProviderEntry[] = [
-      { name: "openai", model: "gpt-image-1", quality: "low" },
+      { name: "openai", model: "gpt-image-2", quality: "low" },
       { name: "recraft", model: "recraftv4" },
     ];
     printGeneratingHeader(providers, 1);
-    expect(stderrOutput).toContain("openai (gpt-image-1, low)");
+    expect(stderrOutput).toContain("openai (gpt-image-2, low)");
     expect(stderrOutput).toContain("recraft (recraftv4)");
     expect(stderrOutput).toContain("Generating with");
   });
 
   it("shows count suffix when count > 1", () => {
     const providers: ProviderEntry[] = [
-      { name: "openai", model: "gpt-image-1" },
+      { name: "openai", model: "gpt-image-2" },
     ];
     printGeneratingHeader(providers, 3);
     expect(stderrOutput).toContain("(3 images each)");
@@ -62,7 +70,7 @@ describe("printResult", () => {
       results: [
         {
           provider: "openai",
-          model: "gpt-image-1",
+          model: "gpt-image-2",
           quality: "low",
           success: true,
           outputs: ["/tmp/test/openai_0.png"],
@@ -86,7 +94,7 @@ describe("printResult", () => {
       results: [
         {
           provider: "openai",
-          model: "gpt-image-1",
+          model: "gpt-image-2",
           success: true,
           outputs: ["/tmp/test/openai_0.png"],
           duration: 1200,
@@ -106,7 +114,7 @@ describe("printResult", () => {
       results: [
         {
           provider: "openai",
-          model: "gpt-image-1",
+          model: "gpt-image-2",
           success: true,
           outputs: ["/tmp/test/openai_0.png"],
           duration: 1200,
@@ -135,7 +143,7 @@ describe("printResult", () => {
       results: [
         {
           provider: "openai",
-          model: "gpt-image-1",
+          model: "gpt-image-2",
           success: true,
           outputs: ["/tmp/test/openai_0.png"],
           duration: 1200,
@@ -160,7 +168,7 @@ describe("printResult", () => {
       results: [
         {
           provider: "openai",
-          model: "gpt-image-1",
+          model: "gpt-image-2",
           success: true,
           outputs: ["/tmp/test/openai_0.png"],
           duration: 1200,
@@ -180,7 +188,7 @@ describe("printResult", () => {
       results: [
         {
           provider: "openai",
-          model: "gpt-image-1",
+          model: "gpt-image-2",
           success: false,
           outputs: [],
           duration: 0,
@@ -199,22 +207,39 @@ describe("printResult", () => {
 describe("printDryRun", () => {
   it("shows provider model details and estimated cost", () => {
     const providers: ProviderEntry[] = [
-      { name: "openai", model: "gpt-image-1.5", quality: "high" },
+      { name: "openai", model: "gpt-image-2", quality: "high" },
       { name: "recraft", model: "recraftv4_pro" },
     ];
     const result: PipelineResult = {
       success: true,
       outputDir: "./output",
       results: [
-        { provider: "openai", model: "gpt-image-1.5", quality: "high", success: true, outputs: [], duration: 0, cost: 0.13, costSource: "estimated" },
-        { provider: "recraft", model: "recraftv4_pro", success: true, outputs: [], duration: 0, cost: 0.25, costSource: "estimated" },
+        {
+          provider: "openai",
+          model: "gpt-image-2",
+          quality: "high",
+          success: true,
+          outputs: [],
+          duration: 0,
+          cost: 0.13,
+          costSource: "estimated",
+        },
+        {
+          provider: "recraft",
+          model: "recraftv4_pro",
+          success: true,
+          outputs: [],
+          duration: 0,
+          cost: 0.25,
+          costSource: "estimated",
+        },
       ],
       totalCost: 0.38,
     };
     printDryRun("mountain", providers, 1, undefined, result);
     expect(stderrOutput).toContain("Dry run");
     expect(stderrOutput).toContain('"mountain"');
-    expect(stderrOutput).toContain("openai (gpt-image-1.5, high)");
+    expect(stderrOutput).toContain("openai (gpt-image-2, high)");
     expect(stderrOutput).toContain("recraft (recraftv4_pro)");
     expect(stderrOutput).toContain("$0.38");
     expect(stderrOutput).toContain("estimated");
@@ -226,7 +251,14 @@ describe("printDryRun", () => {
       success: true,
       outputDir: "./output",
       results: [
-        { provider: "openai", model: "gpt-image-1", success: true, outputs: [], duration: 0, cost: null },
+        {
+          provider: "openai",
+          model: "gpt-image-2",
+          success: true,
+          outputs: [],
+          duration: 0,
+          cost: null,
+        },
       ],
       totalCost: null,
     };
@@ -235,7 +267,9 @@ describe("printDryRun", () => {
   });
 
   it("shows preset when provided", () => {
-    const providers: ProviderEntry[] = [{ name: "openai", model: "gpt-image-1" }];
+    const providers: ProviderEntry[] = [
+      { name: "openai", model: "gpt-image-2" },
+    ];
     const result: PipelineResult = {
       success: true,
       outputDir: "./output",

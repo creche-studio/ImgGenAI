@@ -34,7 +34,13 @@ export function createPipeline(): Pipeline {
   presetRegistry.loadFromDirectories([builtinPresetsDir]);
 
   // 3. Pipeline (with pricing DI)
-  return new Pipeline(providerRegistry, presetRegistry, record, new FsOutputWriter(), calculateCost);
+  return new Pipeline(
+    providerRegistry,
+    presetRegistry,
+    record,
+    new FsOutputWriter(),
+    calculateCost,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +55,17 @@ export {
   ProviderRegistry,
   registerBuiltinProviders,
 } from "../providers/index.js";
+export {
+  MODEL_CATALOG,
+  modelsFor,
+  modelNamesFor,
+  defaultModelFor,
+  resolveModelId,
+  tierAliasesFor,
+  DEFAULT_TIER,
+  isTier,
+} from "../catalog/index.js";
+export type { ModelSpec, Tier, TokenRates } from "../catalog/index.js";
 export { PresetRegistry } from "../presets/registry.js";
 export { record } from "../manifest/index.js";
 

@@ -7,9 +7,15 @@ import { resolveConfig } from "../../core/config.js";
 import type { FlagValues } from "../../core/config.js";
 import { createPipeline } from "../../core/index.js";
 import { AppError, ConfigError, ValidationError } from "../../errors/index.js";
-import type { PipelineInput, PipelineResult, ProviderEntry, ProviderName } from "../../types/index.js";
+import { BUILTIN_PROVIDER_DEFS } from "../../providers/index.js";
+import type {
+  PipelineInput,
+  PipelineResult,
+  ProviderEntry,
+  ProviderName,
+} from "../../types/index.js";
 import { isProviderName } from "../../types/index.js";
-import { isTier, resolveTier, DEFAULT_TIER } from "../aliases.js";
+import { DEFAULT_TIER, isTier, resolveTier } from "../aliases.js";
 import type { Tier } from "../aliases.js";
 import {
   printDryRun,
@@ -49,7 +55,7 @@ function validateProviderName(name: string): ProviderName {
   if (!isProviderName(name)) {
     throw new ValidationError(
       `Unknown provider: "${name}"`,
-      "Allowed providers: openai, recraft, imagen",
+      "Allowed providers: openai, recraft, gemini",
     );
   }
   return name;
@@ -105,7 +111,8 @@ export function resolveProviderEntries(
   const vector = flags.vector ?? false;
 
   const entries: ProviderEntry[] = providerNames.map((name) => {
-    const modelId = flags.model ?? resolveTier(name, tier ?? DEFAULT_TIER, vector);
+    const modelId =
+      flags.model ?? resolveTier(name, tier ?? DEFAULT_TIER, vector);
     const qualities = providerQualities[name];
     const qualityVal = qualities ? flags.quality : undefined;
     return {
@@ -117,7 +124,9 @@ export function resolveProviderEntries(
 
   // --quality specified but no provider supports it → ValidationError
   if (flags.quality !== undefined) {
-    const anySupports = providerNames.some((name) => providerQualities[name] !== undefined);
+    const anySupports = providerNames.some(
+      (name) => providerQualities[name] !== undefined,
+    );
     if (!anySupports) {
       throw new ValidationError(
         "--quality is not supported by any of the specified providers",
@@ -133,11 +142,8 @@ export function resolveProviderEntries(
  * Known provider quality support. Used by CLI layer to determine whether
  * --quality should be forwarded to a given provider.
  */
-const PROVIDER_QUALITIES: Record<string, readonly string[] | undefined> = {
-  openai: ["low", "medium", "high", "auto"],
-  recraft: undefined,
-  imagen: undefined,
-};
+const PROVIDER_QUALITIES: Record<string, readonly string[] | undefined> =
+  Object.fromEntries(BUILTIN_PROVIDER_DEFS.map((d) => [d.name, d.qualities]));
 
 async function executeForPrompt(
   prompt: string,
@@ -171,10 +177,16 @@ async function executeForPrompt(
   }
 
   // Validate provider names early (CLI layer)
-  const providerNames = config.providers.map((name) => validateProviderName(name));
+  const providerNames = config.providers.map((name) =>
+    validateProviderName(name),
+  );
 
   // Resolve provider entries with model/quality from --tier/--model/--quality/--vector
-  const providers = resolveProviderEntries(providerNames, flags, PROVIDER_QUALITIES);
+  const providers = resolveProviderEntries(
+    providerNames,
+    flags,
+    PROVIDER_QUALITIES,
+  );
 
   const input: PipelineInput = {
     prompt,
